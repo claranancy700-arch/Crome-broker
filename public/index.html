@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>C-Broker</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <img src="logo.svg" alt="C-Broker logo" class="logo" onerror="this.style.display='none'">
+        <h1>C-Broker</h1>
+      </div>
+
+      <!-- mobile nav toggle -->
+      <button class="nav-toggle" aria-controls="main-nav" aria-expanded="false" type="button">
+        <span class="sr-only">Menu</span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </button>
+
+      <nav id="main-nav" class="main-nav">
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#contact">Contact</a>
+        <a href="/login">Login</a>
+        <a href="/register" class="cta">Register</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <video class="hero__video" autoplay muted loop playsinline poster="media/hero.jpg">
+        <source src="media/hero.mp4" type="video/mp4">
+        <!-- fallback image for very old browsers -->
+        Your browser does not support the video tag.
+      </video>
+
+      <div class="hero__overlay"></div>
+
+      <div class="container hero__content">
+        <h2>Smarter trading. Simpler tools.</h2>
+        <p>Powerful broker tools built for speed, clarity and control — for traders and businesses of every size.</p>
+        <a class="btn primary" href="/register">Create account</a>
+        <a class="btn" href="/login">Sign in</a>
+      </div>
+    </section>
+
+    <section id="features" class="container features">
+      <article class="feature">
+        <h3>Real-time data</h3>
+        <p>Live quotes, charts and orderbooks with minimal latency.</p>
+      </article>
+      <article class="feature">
+        <h3>Advanced orders</h3>
+        <p>Limit, stop, OCO and trailing options — fully configurable.</p>
+      </article>
+      <article class="feature">
+        <h3>Secure</h3>
+        <p>Bank-grade encryption and two-factor authentication.</p>
+      </article>
+    </section>
+
+    <section id="pricing" class="container pricing">
+      <h3>Pricing</h3>
+      <div class="cards">
+        <div class="card">
+          <h4>Starter</h4>
+          <p class="price">$0/mo</p>
+          <ul>
+            <li>Basic charts</li>
+            <li>Email support</li>
+          </ul>
+          <a class="btn" href="#contact">Sign up</a>
+        </div>
+        <div class="card featured">
+          <h4>Pro</h4>
+          <p class="price">$29/mo</p>
+          <ul>
+            <li>Real-time data</li>
+            <li>Advanced orders</li>
+            <li>Priority support</li>
+          </ul>
+          <a class="btn primary" href="#contact">Start trial</a>
+        </div>
+        <div class="card">
+          <h4>Business</h4>
+          <p class="price">Contact</p>
+          <ul>
+            <li>Dedicated account manager</li>
+            <li>Custom integrations</li>
+          </ul>
+          <a class="btn" href="#contact">Contact sales</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="container contact">
+      <h3>Contact</h3>
+      <p>Email: <a href="mailto:hello@c-broker.example">hello@c-broker.example</a></p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <small>© <span id="year"></span> C-Broker. All rights reserved.</small>
+    </div>
+  </footer>
+
+  <script src="js/main.js" defer></script>
+</body>
+</html>

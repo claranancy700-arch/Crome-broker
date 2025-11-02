@@ -1,0 +1,28 @@
+[
+  {
+    "id": "f4e894e2-a5a9-4635-9836-678989117a1b",
+    "name": "EMILY",
+    "email": "emily@example.com",
+    "salt": "4e6cca39ede755dd50d179f22332685b",
+    "hash": "a43f0490df4bc0fb26f7cbadefb0b8f125950923998df51ef07b08f80224a315582ca6b4125578482287900d6fc88c67256f74ca80ca82e16665bbd7e73b8894",
+    "createdAt": "2025-10-18T14:31:05.332Z"
+  },
+  {
+    "id": "be2798ee-da12-443f-aad7-15d49dcd2a15",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "salt": "335272eb367836092ff55656be4649a2",
+    "hash": "3f5b9441a9c5d21f994a73cea589da758b8db66b2a11a87a4e61f802244c11721b90fade0cff7fd66763d016e79b9bb8b77246e04443d8b1b67320b11c66b99a",
+    "balance": 0,
+    "createdAt": "2025-10-25T08:56:30.063Z"
+  },
+  {
+    "id": "61763f01-d062-4931-b2fc-4092e26bd524",
+    "name": "clara nancy",
+    "email": "claranancy700@gmail.com",
+    "salt": "7490eef5f7e40f9b03db326e7fd6f4ac",
+    "hash": "ac3f8b3bd2d9ce2a02c496b8841346e057869a5ff824f7ced972386a8ee41a5b3c75e182e1fe1e4008450f66e57a36ebd0c7b5bad8655f407883049aff0aa539",
+    "balance": 0,
+    "createdAt": "2025-10-25T09:27:47.136Z"
+  }
+]

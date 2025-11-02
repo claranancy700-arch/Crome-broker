@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard — Sand Box Investment Broker</title>
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <style>
+    /* minimal overrides for the basic dashboard */
+    .grid{grid-template-columns:repeat(2,1fr)}
+    .card{min-height:120px}
+    .notice{margin-bottom:12px;color:var(--muted)}
+    .user-badge{display:inline-block;padding:6px 10px;background:linear-gradient(90deg,var(--wine1),var(--wine2));border-radius:8px;color:#fff;font-weight:700}
+    /* make sparkline area slightly larger for basic dashboard */
+    .spark-svg{height:72px}
+    .refresh-hint{font-size:0.9rem;color:var(--muted);margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="brand">
+        <img src="/logo.svg" class="logo" alt="Sand Box logo" />
+        <div class="brand-text">
+          <div class="brand-title">Sand Box</div>
+          <div class="brand-sub">Investment Broker</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a href="/dashboard-basic" class="nav-item active">Overview</a>
+        <a href="#" class="nav-item">Portfolio</a>
+        <a href="/deposit" class="nav-item">Deposit</a>
+        <a href="/login" class="nav-item">Sign in</a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="left">
+          <h1 class="page-title">Overview</h1>
+        </div>
+        <div class="right">
+          <div class="user">
+            <div class="user-name">Signed in as <span id="userName" class="user-badge">user</span></div>
+          </div>
+
+          <!-- deposit quick action -->
+          <a id="depositBtn" class="btn" href="/deposit" title="Make a deposit">Deposit</a>
+
+          <!-- withdraw quick action -->
+          <a id="withdrawBtn" class="btn" href="/withdraw" title="Withdraw funds">Withdraw</a>
+        </div>
+      </header>
+
+      <section class="grid" style="padding:24px">
+        <article class="card balance card-anim">
+          <h3>Account summary</h3>
+          <p class="notice">Live-updating account balance and recent transactions.</p>
+          <div><strong>Balance</strong> — <span id="balanceVal">$0.00</span></div>
+          <div class="refresh-hint" id="lastRef">Last update: —</div>
+        </article>
+
+        <article class="card portfolio card-anim">
+          <h3>Portfolio snapshot</h3>
+          <p class="muted">Static allocation (for now)</p>
+          <div class="donut" aria-hidden="true" style="width:120px;height:120px;margin:8px 0"></div>
+          <div class="legend">
+            <div><span class="pill a"></span> Equities</div>
+            <div><span class="pill b"></span> Bonds</div>
+            <div><span class="pill c"></span> Cash</div>
+          </div>
+        </article>
+
+        <article class="card sparkline card-anim">
+          <h3>Balance over time</h3>
+          <svg id="spark" viewBox="0 0 200 40" preserveAspectRatio="none" class="spark-svg">
+            <path id="sparkPath" d="" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <div class="spark-meta"><span id="price">—</span> <small id="priceChange" class="muted">—</small></div>
+        </article>
+
+        <article class="card">
+          <h3>Recent activity</h3>
+          <ul id="txList" class="tx-list" aria-live="polite"></ul>
+          <div style="margin-top:12px">
+            <a id="refreshNow" class="btn small">Refresh now</a>
+            <a href="/deposit" class="btn small">Deposit</a>
+          </div>
+        </article>
+      </section>
+
+      <footer class="site-footer">
+        <small>© <span id="year"></span> Sand Box Investment Broker</small>
+      </footer>
+    </div>
+  </div>
+
+  <script src="/js/dashboard-basic.js" defer></script>
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

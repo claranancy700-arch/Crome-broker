@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Withdraw — Sand Box Investment Broker</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    .auth-container{max-width:520px;margin:40px auto;padding:28px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;border:1px solid rgba(162,31,53,0.06)}
+    form .row{margin-bottom:12px;display:flex;flex-direction:column;gap:6px}
+    label{font-weight:700;color:var(--white)}
+    input[type="text"], input[type="email"], input[type="number"], textarea{padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--white)}
+    .muted{color:var(--muted);font-size:0.9rem}
+    .msg{margin-top:12px;padding:10px;border-radius:8px;display:none}
+    .msg.success{background:rgba(34,77,55,0.12);border:1px solid rgba(34,77,55,0.18);color:#bfe9c7;display:block}
+    .msg.error{background:rgba(162,31,53,0.08);border:1px solid rgba(162,31,53,0.14);color:#ffd7da;display:block}
+    .actions{display:flex;gap:12px;align-items:center;margin-top:10px}
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <div class="brand">
+        <img src="/logo.svg" alt="Sand Box logo" class="logo" />
+        <h1>Sand Box</h1>
+      </div>
+      <nav class="main-nav">
+        <a href="/">Home</a>
+        <a href="/dashboard-basic">Dashboard</a>
+        <a href="/login">Login</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="container">
+      <div class="auth-container">
+        <h2>Make a withdrawal</h2>
+        <p class="muted">Enter your details and amount. Withdrawal will reduce your account balance.</p>
+
+        <form id="withdrawForm" autocomplete="off" novalidate>
+          <div class="row">
+            <label for="name">Full name</label>
+            <input id="name" name="name" type="text" placeholder="EMILY" />
+          </div>
+
+          <div class="row">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" required placeholder="emily@example.com" />
+          </div>
+
+          <div class="row">
+            <label for="amount">Amount (USD)</label>
+            <input id="amount" name="amount" type="number" step="0.01" min="0.01" required />
+          </div>
+
+          <div class="row">
+            <label for="note">Note (optional)</label>
+            <textarea id="note" name="note" rows="3"></textarea>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn primary">Withdraw</button>
+            <a href="/" class="btn">Cancel</a>
+          </div>
+
+          <div id="message" class="msg" role="status"></div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <small>© <span id="year"></span> Sand Box Investment Broker</small>
+    </div>
+  </footer>
+
+  <script src="/js/withdraw.js" defer></script>
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

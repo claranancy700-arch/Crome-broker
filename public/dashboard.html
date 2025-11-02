@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard — Sand Box Investment Broker</title>
+  <link rel="stylesheet" href="/css/dashboard.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="brand">
+        <img src="/logo.svg" class="logo" alt="Sand Box logo" />
+
+      </div>
+
+      <nav class="nav">
+        <a href="/dashboard" class="nav-item active">Overview</a>
+        <a href="/market" class="nav-item">Market</a>
+        <a href="/portfolio?mock=1&user=EMILY" class="nav-item">Portfolio</a>
+        <a href="#" class="nav-item">Orders</a>
+        <a href="#" class="nav-item">Reports</a>
+        <a href="/logout" class="nav-item">Sign out</a>
+      </nav>
+
+      <button id="sidebarToggle" class="sidebar-toggle" aria-label="Collapse sidebar">⟨</button>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="left">
+          <button id="menuToggle" class="icon-btn" aria-label="Toggle sidebar">☰</button>
+          <h1 class="page-title">Overview</h1>
+        </div>
+        <div class="right">
+          <div class="user">
+            <div class="user-name">Hello, <strong id="userName">User</strong></div>
+            <button class="avatar-btn" title="Profile">SB</button>
+          </div>
+
+          <!-- deposit quick action -->
+          <a id="depositBtn" class="btn" href="/deposit" title="Make a deposit">Deposit</a>
+
+          <!-- withdraw quick action -->
+          <a id="withdrawBtn" class="btn" href="/withdraw" title="Withdraw funds">Withdraw</a>
+        </div>
+      </header>
+
+      <section class="grid">
+        <article class="card balance card-anim">
+          <h3>Account balance</h3>
+          <div class="balance-amount" id="balance">$0</div>
+          <div class="balance-meta">Updated <span id="lastUpdate">—</span></div>
+        </article>
+
+        <article class="card portfolio card-anim">
+          <h3>Portfolio (snapshot)</h3>
+          <div class="donut" id="donut" aria-hidden="true"></div>
+          <div class="legend">
+            <div><span class="pill a"></span> Equities</div>
+            <div><span class="pill b"></span> Bonds</div>
+            <div><span class="pill c"></span> Cash</div>
+          </div>
+        </article>
+
+        <article class="card sparkline card-anim">
+          <h3>Activity sparkline</h3>
+          <svg id="spark" viewBox="0 0 200 40" preserveAspectRatio="none" class="spark-svg" aria-hidden="true">
+            <path id="sparkPath" d="" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <div class="spark-meta"><span id="price">—</span> <small id="priceChange" class="muted">—</small></div>
+        </article>
+
+        <section class="transactions card card-anim">
+          <h3>Recent transactions</h3>
+          <ul id="txList" class="tx-list" aria-live="polite"></ul>
+          <div class="tx-actions">
+            <button id="addTx" class="btn small" disabled>Simulate tx</button>
+            <button id="clearTx" class="btn small muted" disabled>Clear</button>
+          </div>
+        </section>
+      </section>
+
+      <footer class="site-footer">
+        <small>© <span id="year"></span> Sand Box Investment Broker</small>
+      </footer>
+    </div>
+  </div>
+
+  <script src="/js/dashboard.js" defer></script>
+  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+:root{
+  --bg1:#12060a;
+  --bg2:#1b0710;
+  --wine1:#6b0f1a;
+  --wine2:#a21f35;
+  --muted: #c7bfc1;
+  --card: rgba(255,255,255,0.03);
+  --glass: rgba(255,255,255,0.02);
+  --accent-glow: 0 10px 30px rgba(162,31,53,0.18);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:#fff}
+.app{display:flex;min-height:100vh}
+
+/* Sidebar */
+.sidebar{
+  width:280px;
+  background:linear-gradient(180deg, rgba(107,15,26,0.14), rgba(162,31,53,0.06));
+  padding:22px;
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+  transition:width .28s ease, transform .28s ease;
+  border-right:1px solid rgba(255,255,255,0.03);
+}
+.sidebar.collapsed{width:100px !important;}
+.brand{display:flex;align-items:center;gap:12px}
+/* make logo able to grow; constrain with max-width:100% for small screens */
+.brand .logo{
+  width:600px;
+  max-width:100%;
+  height:auto;
+  display:block;
+  object-fit:contain;
+}
+.brand-text{display:flex;flex-direction:column}
+.brand-title{font-weight:800;font-size:18px}
+.brand-sub{font-size:12px;color:var(--muted)}
+.nav{display:flex;flex-direction:column;gap:6px}
+.nav-item{padding:10px 12px;border-radius:8px;color:var(--muted);text-decoration:none;font-weight:700}
+.nav-item.active, .nav-item:hover{background:linear-gradient(90deg,var(--wine1),var(--wine2));color:#fff;box-shadow:var(--accent-glow)}
+
+/* Sidebar toggle */
+.sidebar-toggle{margin-top:auto;background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:8px;color:#fff;cursor:pointer;}
+
+/* Main column */
+.main{flex:1;display:flex;flex-direction:column}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:18px 28px;border-bottom:1px solid rgba(255,255,255,0.03)}
+.page-title{margin:0;font-size:1.15rem}
+.icon-btn{background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:24px}
+.card{background:var(--glass);padding:18px;border-radius:12px;border:1px solid rgba(162,31,53,0.04);box-shadow:0 6px 20px rgba(3,7,18,0.5)}
+.card h3{margin:0 0 12px}
+
+/* Animation entrance (stagger via JS) */
+.card-anim{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+
+/* Balance */
+.balance-amount{font-size:2.2rem;font-weight:900}
+.balance-meta{color:var(--muted);font-size:0.9rem}
+
+/* Donut (simple CSS donut using conic gradient) */
+.donut{width:120px;height:120px;border-radius:999px;margin:6px 0;background:conic-gradient(var(--wine1) 0 46%, #8b1a2a 46% 78%, #2f0b0e 78% 100%);box-shadow:inset 0 -10px 30px rgba(0,0,0,0.4)}
+.legend{display:flex;gap:12px;flex-direction:column;margin-top:10px}
+.pill{display:inline-block;width:12px;height:12px;border-radius:4px;margin-right:8px}
+.pill.a{background:var(--wine1)}
+.pill.b{background:#8b1a2a}
+.pill.c{background:#2f0b0e}
+
+/* Sparkline */
+.spark-svg{width:100%;height:60px;display:block}
+.spark-meta{display:flex;gap:8px;align-items:center;margin-top:6px}
+#price{font-weight:800}
+.muted{color:var(--muted);font-size:0.9rem}
+
+/* Transactions */
+.tx-list{list-style:none;padding:0;margin:8px 0;max-height:180px;overflow:auto}
+.tx-list li{display:flex;justify-content:space-between;padding:8px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));margin-bottom:8px;border:1px solid rgba(255,255,255,0.02)}
+.tx-list .amount{font-weight:800}
+
+/* Buttons */
+.btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#fff;padding:8px 10px;border-radius:8px;cursor:pointer}
+.btn.small{padding:6px 8px;font-size:0.95rem}
+.btn.muted{background:transparent;opacity:0.8}
+
+/* Footer */
+.site-footer{padding:18px 28px;margin-top:auto;color:var(--muted);border-top:1px solid rgba(255,255,255,0.02)}
+
+/* Responsive */
+@media (max-width:1000px){
+  .grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:760px){
+  .sidebar{display:none}
+  .grid{grid-template-columns:1fr}
+  .brand .logo{display:none}
+}
+
+/* remove/override smaller logo rule at bottom if present */
+.brand .logo {
+  width: 00px;
+  width: 600px;
+  height: auto;
+  display: block;
+  object-fit: contain;
+}
