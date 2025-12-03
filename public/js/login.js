@@ -72,8 +72,8 @@
             // go to the primary dashboard (interactive)
             window.location = '/dashboard?user=' + encodeURIComponent(userName);
           } else {
-            // default to lightweight dashboard
-            window.location = '/dashboard-basic?user=' + encodeURIComponent(userName);
+            // default to primary dashboard
+            window.location = '/dashboard?user=' + encodeURIComponent(userName);
           }
         }, 800);
       }

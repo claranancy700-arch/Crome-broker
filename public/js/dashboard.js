@@ -119,7 +119,7 @@ function initDashboardUI() {
 
   // initial balance count-up (demo)
   setTimeout(() => {
-    if (balanceEl) countUp(balanceEl, 0, 48230, 900);
+    if (balanceEl) countUp(balanceEl, 0, 76728, 900);
   }, 420);
 
   // sidebar toggle wiring

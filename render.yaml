@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: crome-broker
+    runtime: node
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    # Optional: Add PostgreSQL database
+    # databases:
+    #   - name: crome-broker-db
+    #     plan: free

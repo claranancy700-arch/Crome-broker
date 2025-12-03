@@ -97,7 +97,9 @@
       // fallback to mock so UI still useful during development
       const demo = [
         { ticker: 'BTC', qty: 0.05, avgPrice: 42000, marketPrice: 0 },
-        { ticker: 'ETH', qty: 2.3, avgPrice: 1500, marketPrice: 0 }
+        { ticker: 'ETH', qty: 2.3, avgPrice: 1500, marketPrice: 0 },
+        { ticker: 'LINK', qty: 40, avgPrice: 7.2, marketPrice: 0 },
+        { ticker: 'ADA', qty: 250, avgPrice: 0.45, marketPrice: 0 }
       ];
       const tickers = demo.map(d => d.ticker);
       const prices = await fetchMarketPrices(tickers);

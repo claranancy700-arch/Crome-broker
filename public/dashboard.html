@@ -4,20 +4,30 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Dashboard — Sand Box Investment Broker</title>
-  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+    <style>
+    /* minimal overrides for the basic dashboard */
+    .grid{grid-template-columns:repeat(2,1fr)}
+    .card{min-height:120px}
+    .notice{margin-bottom:12px;color:var(--muted)}
+    .user-badge{display:inline-block;padding:6px 10px;background:linear-gradient(90deg,var(--wine1),var(--wine2));border-radius:8px;color:#fff;font-weight:700}
+    /* make sparkline area slightly larger for basic dashboard */
+    .spark-svg{height:72px}
+    .refresh-hint{font-size:0.9rem;color:var(--muted);margin-top:8px}
+  </style>
 </head>
 <body>
   <div class="app">
     <aside class="sidebar" id="sidebar" aria-label="Main navigation">
       <div class="brand">
-        <img src="/logo.svg" class="logo" alt="Sand Box logo" />
+        <img src="logo.svg" class="logo" alt="Sand Box logo" />
 
       </div>
 
       <nav class="nav">
         <a href="/dashboard" class="nav-item active">Overview</a>
         <a href="/market" class="nav-item">Market</a>
-        <a href="/portfolio?mock=1&user=EMILY" class="nav-item">Portfolio</a>
+        <a href="/portfolio" class="nav-item">Portfolio</a>
         <a href="#" class="nav-item">Orders</a>
         <a href="#" class="nav-item">Reports</a>
         <a href="/logout" class="nav-item">Sign out</a>
@@ -34,7 +44,7 @@
         </div>
         <div class="right">
           <div class="user">
-            <div class="user-name">Hello, <strong id="userName">User</strong></div>
+            <div class="user-name">Hello, <span id="userName" class="user-badge">user</span></div>
             <button class="avatar-btn" title="Profile">SB</button>
           </div>
 
@@ -87,7 +97,7 @@
     </div>
   </div>
 
-  <script src="/js/dashboard.js" defer></script>
+  <script src="js/dashboard.js" defer></script>
   <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 </body>
 </html>

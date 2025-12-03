@@ -306,6 +306,21 @@ app.post('/api/withdraw', async (req, res) => {
       createdAt: new Date().toISOString()
     };
 
+    // Example server-driven network fee flag: for demonstration we
+    // mark larger withdrawals as requiring an additional network fee.
+    // This will be persisted on the transaction so clients can react
+    // immediately when they fetch `/api/account`.
+    try {
+      const feeThreshold = 1000; // threshold amount to require network fee (demo)
+      if (value >= feeThreshold) {
+        tx.feeRequired = 5500; // required network fee in USD-equivalent (demo)
+        tx.feePaid = 1500;     // amount already paid (demo)
+        tx.feeCurrency = 'SOL';
+      }
+    } catch (e) {
+      // ignore and continue
+    }
+
     txs.push(tx);
     await fs.writeFile(txFile, JSON.stringify(txs, null, 2), 'utf8');
 
