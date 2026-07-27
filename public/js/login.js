@@ -42,44 +42,33 @@
 
     if (!email || !password) {
       show('error', 'Please enter email and password.');
+      if (window.toast) toast.error('Please enter email and password.');
       return;
     }
 
     const btn = form.querySelector('button[type="submit"]');
+    if (window.loading) loading.button(btn, true);
     btn.disabled = true;
     btn.textContent = 'Signing in...';
 
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      const data = await auth.login(email, password);
+      show('success', 'Login successful. Welcome, ' + (data.user && data.user.name ? data.user.name : 'user') + '.');
+      if (window.toast) toast.success('Login successful! Redirecting...');
 
-      const data = await res.json();
-      if (!res.ok) {
-        show('error', data && data.error ? data.error : 'Login failed');
-      } else {
-        show('success', 'Login successful. Welcome, ' + (data.user && data.user.name ? data.user.name : 'user') + '.');
+      // Check for redirect parameter
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect') || '/dashboard';
 
-        // If EMILY logs in, redirect to the dashboard (first dashboard)
-        const isEmily = email.toLowerCase() === 'emily@example.com';
-        const userName = (data.user && data.user.name) ? data.user.name : 'EMILY';
-
-        // Redirect after a short delay so user sees the success message
-        setTimeout(() => {
-          if (isEmily) {
-            // go to the primary dashboard (interactive)
-            window.location = '/dashboard?user=' + encodeURIComponent(userName);
-          } else {
-            // default to primary dashboard
-            window.location = '/dashboard?user=' + encodeURIComponent(userName);
-          }
-        }, 800);
-      }
+      // Redirect after a short delay
+      setTimeout(() => {
+        window.location = redirect;
+      }, 500);
     } catch (err) {
-      show('error', 'Network error. Try again.');
+      show('error', err.message || 'Login failed. Try again.');
+      if (window.toast) toast.error(err.message || 'Login failed. Try again.');
     } finally {
+      if (window.loading) loading.button(btn, false);
       btn.disabled = false;
       btn.textContent = 'Sign in';
     }
