@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wire Transaction Log — C-Broker</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    #matrix {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 80%;
+    height: 100%;
+    z-index: 0;
+    opacity: 0.2;
+    pointer-events: none;
+}
+    .wrap{max-width:1600px;margin:28px auto;padding:18px}
+    .panel{background:rgba(255,255,255,0.02);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.03)}
+    th{font-weight:700}
+    .muted{color:var(--muted)}
+    .loading-bar-container{margin:20px 0;}
+    .loading-bar{background:#333;border-radius:5px;height:20px;width:100%;overflow:hidden;}
+    .loading-progress{background:#4CAF50;height:100%;width:0%;transition:width 0.1s;}
+    .log-container{margin-top:20px;}
+    .activity-log{max-height:300px;overflow-y:auto;background:#111;padding:10px;border-radius:5px;font-family:monospace;font-size:12px;color:#ccc;}
+    .log-entry{margin:5px 0;padding:5px;border-bottom:1px solid #333;word-wrap:break-word;}
+    .log-entry .timestamp{color:#888;}
+    .log-entry.info{color:#4CAF50;}
+    .log-entry.warning{color:#FFC107;}
+    .log-entry.error{color:#F44336;}
+    .prompt-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:1000;}
+    .prompt-box{background: #000;color:#000;padding:20px;border-radius:10px;max-width:85%;width:90%;max-height:80vh;overflow-y:auto;}
+    .prompt-box h2{color:#d9534f;}
+    .hidden{display:none;}
+    .content-wrapper{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;}
+    .content-section{background:rgba(255,255,255,0.02);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);}
+    .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0;}
+    .stat-item{background:rgba(255,255,255,0.05);padding:12px;border-radius:5px;border-left:3px solid #4CAF50;}
+    .stat-label{font-size:12px;color:var(--muted);margin-bottom:5px;}
+    .stat-value{font-size:18px;font-weight:bold;color:#fff;}
+  </style>
+</head>
+<body style="margin:0;padding:0;overflow-x:hidden;font-family:'Courier New',monospace;background:#000000;color:#00ff00;">
+              <!-- Matrix Canvas Background -->
+    <canvas id="matrix"></canvas>
+    <div style="background:#000000;color:red;font-family:'Courier New',monospace;padding:20px;border-radius:5px;border:2px solid #00ff00;box-shadow:0 0 10px rgba(0,255,0,0.3);">
+  <main class="wrap">
+    <header style="display:flex;justify-content:space-between;align-items:center">
+      <h1>Wire Transaction Log</h1>
+      <div class="actions">
+        <a class="btn" href="/dashboard">Back to dashboard</a>
+      </div>
+    </header>
+
+    <div class="loading-bar-container">
+      <div class="loading-bar">
+        <div class="loading-progress" id="loadingProgress"></div>
+      </div>
+      <p id="loadingText">Loading transaction log...</p>
+      <div class="log-container" id="logContainer">
+        <h3>Loading Activity Log</h3>
+        <div id="activityLog" class="activity-log"></div>
+      </div>
+    </div>
+
+    <section class="panel hidden" id="transactionPanel">
+      <h2>Transaction Analysis Dashboard</h2>
+      
+      <div class="content-wrapper">
+        <!-- Left Column: Transaction History -->
+        <div class="content-section">
+          <h3>Transaction History</h3>
+          <table id="transactionTable" aria-live="polite">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Amount</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="transactionBody">
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Right Column: Statistics & Analytics -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+          <div class="content-section">
+            <h4 style="margin-bottom:10px;">Key Metrics</h4>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-label">Total Transactions</div>
+                <div class="stat-value" id="statsTotal">0</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">Total Volume</div>
+                <div class="stat-value" id="statsVolume">$0</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">Avg Transaction</div>
+                <div class="stat-value" id="statsAverage">$0</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">Risk Level</div>
+                <div class="stat-value" id="statsRisk">HIGH</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="content-section">
+            <h4 style="margin-bottom:10px;">Transaction Breakdown</h4>
+            <div id="transactionBreakdown"></div>
+          </div>
+
+          <div class="content-section">
+            <h4 style="margin-bottom:10px;">Account Status</h4>
+            <div style="background:rgba(255,255,255,0.05);padding:10px;border-radius:5px;">
+              <div style="display:flex;justify-content:space-between;margin:5px 0;"><span>Status:</span><span style="color:#4CAF50;font-weight:bold;">ACTIVE</span></div>
+              <div style="display:flex;justify-content:space-between;margin:5px 0;"><span>Balance:</span><span id="accountBalance">$0</span></div>
+              <div style="display:flex;justify-content:space-between;margin:5px 0;"><span>Limit:</span><span>$20,000</span></div>
+              <div style="display:flex;justify-content:space-between;margin:5px 0;"><span>Overdraft:</span><span id="overdraftAmount" style="color:#d9534f;font-weight:bold;">$0</span></div>
+            </div>
+          </div>
+
+          <div class="content-section">
+            <h4 style="margin-bottom:10px;">Recent Activity</h4>
+            <div style="background:rgba(255,255,255,0.05);padding:10px;border-radius:5px;font-size:12px;">
+              <div id="recentActivity"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="prompt-overlay hidden" id="overdraftPrompt">
+      <div class="prompt-box">
+        <!-- Content will be populated by JS -->
+      </div>
+    </div>
+  </main>
+
+  <script src="js/wire-transaction-log.js"></script>
+</body>
+</html>

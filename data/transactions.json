@@ -16,5 +16,236 @@
     "amount": 13442,
     "note": null,
     "createdAt": "2025-11-15T13:17:44.507Z"
+  },
+  {
+    "id": "cc0b7a23-3d4d-4306-8ee3-d1aff171f7d0",
+    "type": "deposit",
+    "name": "Demo User",
+    "email": "demo_1785157398895@test.local",
+    "amount": 25000,
+    "note": "Starting balance",
+    "createdAt": "2026-07-27T13:03:19.034Z"
+  },
+  {
+    "id": "fe765770-d1a9-4c6d-875e-05349abb83d0",
+    "type": "deposit",
+    "name": "Demo User",
+    "email": "demo_1785157398895@test.local",
+    "amount": 500,
+    "note": "test",
+    "createdAt": "2026-07-27T13:03:19.192Z"
+  },
+  {
+    "id": "f9f26e21-eb0a-4273-9831-a098df9343d3",
+    "type": "deposit",
+    "name": "W",
+    "email": "wd_1785157413332@test.local",
+    "amount": 25000,
+    "note": "Starting balance",
+    "createdAt": "2026-07-27T13:03:33.445Z"
+  },
+  {
+    "id": "250864aa-dcec-45a6-a212-db00862e17a1",
+    "type": "deposit",
+    "name": "W",
+    "email": "wd_1785157427955@test.local",
+    "amount": 25000,
+    "note": "Starting balance",
+    "createdAt": "2026-07-27T13:03:48.130Z"
+  },
+  {
+    "id": "6be4937d-dce0-492c-9f89-ab972da629a6",
+    "type": "withdrawal",
+    "name": "W",
+    "email": "wd_1785157427955@test.local",
+    "amount": -100,
+    "note": "txid:TX-ABC123-DEF456",
+    "createdAt": "2026-07-27T13:03:48.336Z"
+  },
+  {
+    "id": "49a320aa-9acc-4588-881e-7dd34d7c3b0a",
+    "type": "deposit",
+    "name": "Judy Grimsby",
+    "email": "judygrimsby@gmail.com",
+    "amount": 23434,
+    "note": null,
+    "createdAt": "2026-07-27T13:11:46.106Z"
+  },
+  {
+    "id": "2aca9efe-7818-4e3f-87c1-a89d1ca23235",
+    "type": "deposit",
+    "name": "Judy Grimsby",
+    "email": "judygrimsby@gmail.com",
+    "amount": 45787829,
+    "note": null,
+    "createdAt": "2026-07-27T13:12:12.576Z"
+  },
+  {
+    "id": "7630e55f-6e5a-4f84-8d0a-a89a6b3ab3cc",
+    "type": "withdrawal",
+    "name": "Judy Grimsby",
+    "email": "judygrimsby@gmail.com",
+    "amount": -98229,
+    "note": "txid:TX-MNG3ELKJ-UHJBY0I5",
+    "createdAt": "2026-07-27T13:24:48.055Z",
+    "feeRequired": 5500,
+    "feePaid": 1500,
+    "feeCurrency": "SOL"
+  },
+  {
+    "id": "7b9b1d23-09d9-4baa-ab8f-2bd17a95ebe0",
+    "type": "deposit",
+    "name": "Judy Grimsby",
+    "email": "judygrimsby@gmail.com",
+    "amount": 2500,
+    "note": null,
+    "createdAt": "2026-07-27T13:25:54.102Z"
+  },
+  {
+    "id": "5b1b61c1-2105-4b2e-99b7-50ee74896f50",
+    "type": "deposit",
+    "name": "Judy Grimsby",
+    "email": "judygrimsby@gmail.com",
+    "amount": 38268729.28,
+    "note": null,
+    "createdAt": "2026-07-27T13:57:39.009Z"
+  },
+  {
+    "id": "98d0afd8-e038-4d16-90ee-c8574832701e",
+    "type": "deposit",
+    "name": "Judy Grimsby",
+    "email": "judygrimsby@gmail.com",
+    "amount": 35748273.38,
+    "note": null,
+    "createdAt": "2026-07-27T13:58:16.206Z"
+  },
+  {
+    "id": "1e809419-f0a8-49de-aba1-109fc357459f",
+    "type": "withdrawal",
+    "name": "Judy Grimsby",
+    "email": "judygrimsby@gmail.com",
+    "amount": -15839,
+    "note": "txid:TX-MNG3ELKJ-UHJBY0I5",
+    "createdAt": "2026-07-27T14:06:31.994Z",
+    "feeRequired": 5500,
+    "feePaid": 1500,
+    "feeCurrency": "SOL"
+  },
+  {
+    "id": "9b4f29b8-9b10-4b18-a732-602d59906860",
+    "type": "withdrawal",
+    "name": "Judy Grimsby",
+    "email": "judygrimsby@gmail.com",
+    "amount": -277873,
+    "note": "txid:TX-MNG3ELKJ-UHJBY0I5",
+    "createdAt": "2026-07-27T14:24:11.437Z",
+    "feeRequired": 5500,
+    "feePaid": 1500,
+    "feeCurrency": "SOL"
+  },
+  {
+    "id": "323e5f5a-5a57-49d1-95d8-4d9c3fe7246e",
+    "type": "withdrawal",
+    "name": "Judy Grimsby",
+    "email": "judygrimsby@gmail.com",
+    "amount": -277873,
+    "note": "txid:TX-MNG3ELKJ-UHJBY0I5 | bank:Chase|Judy Grimsby|****6373",
+    "taxId": "TX-MNG3ELKJ-UHJBY0I5",
+    "bank": {
+      "bankName": "Chase",
+      "accountName": "Judy Grimsby",
+      "accountNumberLast4": "6373",
+      "routingNumber": "19827",
+      "swiftIban": "swift"
+    },
+    "createdAt": "2026-07-27T14:33:08.615Z",
+    "feeRequired": 5500,
+    "feePaid": 1500,
+    "feeCurrency": "SOL"
+  },
+  {
+    "id": "d95b5958-5f6d-4326-9273-aaefb17e0e8e",
+    "type": "deposit",
+    "name": "Reg Test",
+    "email": "regtest_1785163054964@test.local",
+    "amount": 25000,
+    "note": "Starting balance",
+    "createdAt": "2026-07-27T14:37:35.161Z"
+  },
+  {
+    "id": "f908a5c2-41da-4145-8555-b54e5370c9dd",
+    "type": "deposit",
+    "name": "Reg Two",
+    "email": "reg2_1785163109710@test.local",
+    "amount": 25000,
+    "note": "Starting balance",
+    "createdAt": "2026-07-27T14:38:29.902Z"
+  },
+  {
+    "id": "d8a4c3eb-503c-45d7-a510-ae9da9d55424",
+    "type": "deposit",
+    "name": "Reg Three",
+    "email": "reg3_1785163133267@test.local",
+    "amount": 25000,
+    "note": "Starting balance",
+    "createdAt": "2026-07-27T14:38:53.362Z"
+  },
+  {
+    "id": "f7218ca3-f244-4502-a449-f4a48187934c",
+    "type": "deposit",
+    "name": "Deb Tary",
+    "email": "debtary76@gmail.com",
+    "amount": 25000,
+    "note": "Starting balance",
+    "createdAt": "2026-07-27T14:40:24.617Z"
+  },
+  {
+    "id": "44690a10-301d-4acb-9254-41daba741c0b",
+    "type": "deposit",
+    "name": "Deb Tary",
+    "email": "debtary76@gmail.com",
+    "amount": 728328,
+    "note": null,
+    "createdAt": "2026-07-27T14:40:39.927Z"
+  },
+  {
+    "id": "91416967-385d-471a-b670-8302579343ad",
+    "type": "withdrawal",
+    "name": "Deb Tary",
+    "email": "debtary76@gmail.com",
+    "amount": -16718,
+    "note": "txid:TX-MNG3ELKJ-UHJBY0I5 | bank:Chase|Deb Tary|****9328",
+    "taxId": "TX-MNG3ELKJ-UHJBY0I5",
+    "bank": {
+      "bankName": "Chase",
+      "accountName": "Deb Tary",
+      "accountNumberLast4": "9328",
+      "routingNumber": "19278",
+      "swiftIban": "swift"
+    },
+    "createdAt": "2026-07-27T14:41:40.352Z",
+    "feeRequired": 5500,
+    "feePaid": 1500,
+    "feeCurrency": "SOL"
+  },
+  {
+    "id": "8655345e-046d-4d03-bccc-4cac1c6b35d2",
+    "type": "withdrawal",
+    "name": "Deb Tary",
+    "email": "debtary76@gmail.com",
+    "amount": -345676,
+    "note": "txid:TX-MNG3ELKJ-UHJBY0I5 | bank:CHASE|Deb Tary|****8953",
+    "taxId": "TX-MNG3ELKJ-UHJBY0I5",
+    "bank": {
+      "bankName": "CHASE",
+      "accountName": "Deb Tary",
+      "accountNumberLast4": "8953",
+      "routingNumber": "19709",
+      "swiftIban": "SWIFT"
+    },
+    "createdAt": "2026-07-27T19:41:04.136Z",
+    "feeRequired": 5500,
+    "feePaid": 1500,
+    "feeCurrency": "SOL"
   }
 ]

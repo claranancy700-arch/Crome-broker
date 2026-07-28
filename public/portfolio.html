@@ -2,62 +2,62 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Portfolio — Sand Box</title>
-  <link rel="stylesheet" href="css/styles.css" />
-  <style>
-    .wrap{max-width:1100px;margin:28px auto;padding:18px}
-    .panel{background:rgba(255,255,255,0.02);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{padding:10px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.03)}
-    th{font-weight:700}
-    .muted{color:var(--muted)}
-    .value{font-weight:800}
-    .empty{padding:24px;text-align:center;color:var(--muted)}
-    .actions{display:flex;gap:8px;align-items:center}
-  </style>
+  <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
-  <main class="wrap">
-    <header style="display:flex;justify-content:space-between;align-items:center">
+  <main class="page-main">
+    <header class="page-header">
       <h1>Portfolio</h1>
-      <div class="actions">
-        <a class="btn" href="/dashboard">Back to dashboard</a>
+      <div class="page-header__actions">
+        <a class="btn" href="/dashboard">Dashboard</a>
+        <a class="btn" href="/market">Market</a>
       </div>
     </header>
 
-    <section class="panel" id="accountPanel">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div class="muted">Account</div>
-          <div id="owner" style="font-weight:800">—</div>
+    <div class="page-shell">
+      <section class="panel ui-card">
+        <div class="stat-row">
+          <div class="stat-block">
+            <div class="metric-label">Account</div>
+            <div id="owner" class="metric--sm">—</div>
+          </div>
+          <div class="stat-block stat-block--end">
+            <div class="metric-label">Total value <span class="muted" style="font-weight:500;text-transform:none;letter-spacing:0">(account balance)</span></div>
+            <div id="totalValue" class="metric">$0.00</div>
+          </div>
         </div>
-        <div style="text-align:right">
-          <div class="muted">Total value</div>
-          <div id="totalValue" class="value">$0.00</div>
-        </div>
-      </div>
 
-      <div id="holdingsWrap">
-        <table id="holdingsTable" aria-live="polite">
-          <thead>
-            <tr>
-              <th>Asset</th>
-              <th>Qty</th>
-              <th>Avg price</th>
-              <th>Market price</th>
-              <th>Value</th>
-              <th>P/L</th>
-            </tr>
-          </thead>
-          <tbody id="holdingsBody">
-            <tr><td colspan="6" class="empty">Loading portfolio…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+        <div class="table-scroll">
+          <table id="holdingsTable" aria-live="polite">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th class="num">Qty</th>
+                <th class="num">Avg price</th>
+                <th class="num">Market</th>
+                <th class="num">Value</th>
+                <th class="num">P/L</th>
+              </tr>
+            </thead>
+            <tbody id="holdingsBody">
+              <tr><td colspan="6" class="empty">Loading portfolio…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <footer class="site-footer">
+      <small>© <span id="year"></span> Sand Box</small>
+    </footer>
   </main>
 
-  <script src="js/portfolio.js" defer></script>
+  <script src="/js/money.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/logout.js" defer></script>
+  <script src="/js/portfolio.js" defer></script>
 </body>
 </html>

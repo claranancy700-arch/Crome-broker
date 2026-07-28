@@ -1,113 +1,144 @@
-// portfolio page: shows user's holdings (mock when ?mock=1). Remove mock behavior later.
+// Portfolio — auth + demo holdings; shared money formatting
 (function () {
   'use strict';
-
-  const params = new URLSearchParams(location.search);
-  const email = params.get('email') || '';
-  const user = params.get('user') || '';
-  const mock = params.get('mock') === '1';
 
   const ownerEl = document.getElementById('owner');
   const totalEl = document.getElementById('totalValue');
   const body = document.getElementById('holdingsBody');
 
-  function formatCurrency(v) {
-    return '$' + Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function fmt(v) {
+    return window.money ? money.format(v) : '$' + Number(v || 0).toFixed(2);
+  }
+  function fmtDelta(v) {
+    return window.money ? money.formatDelta(v) : (Number(v) >= 0 ? '+' : '') + fmt(Math.abs(v));
+  }
+  function fmtQty(v) {
+    return window.money ? money.formatQty(v) : String(Number(v || 0));
   }
 
-  function renderHoldings(list, prices = {}) {
+  // Portfolio total value mirrors account balance (same figure as dashboard)
+  let accountBalance = 0;
+
+  function setTotalFromBalance(bal) {
+    accountBalance = Number(bal) || 0;
+    if (totalEl) totalEl.textContent = fmt(accountBalance);
+  }
+
+  function renderHoldings(list, prices) {
+    if (!body) return;
     body.innerHTML = '';
     if (!list || list.length === 0) {
       body.innerHTML = '<tr><td colspan="6" class="empty">No holdings found.</td></tr>';
-      totalEl.textContent = formatCurrency(0);
+      // Keep total locked to account balance, not holdings sum
+      if (totalEl) totalEl.textContent = fmt(accountBalance);
       return;
     }
-    let total = 0;
-    list.forEach(h => {
+    list.forEach((h) => {
       const ticker = (h.ticker || h.symbol || 'UNK').toUpperCase();
       const qty = Number(h.qty || 0);
       const avg = Number(h.avgPrice || h.avg || 0);
-      const market = prices[ticker] || Number(h.marketPrice || 0);
-      const value = qty * (market || avg || 0);
-      const pl = value - (qty * avg);
-      total += value;
+      const market = (prices && prices[ticker]) || Number(h.marketPrice || 0);
+      const px = market || avg || 0;
+      const value = qty * px;
+      const pl = value - qty * avg;
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${ticker}</td>
-                      <td>${qty}</td>
-                      <td>${formatCurrency(avg)}</td>
-                      <td>${market ? formatCurrency(market) : '<span class="muted">—</span>'}</td>
-                      <td>${formatCurrency(value)}</td>
-                      <td style="color:${pl>=0? '#bfe9c7' : '#ffd7da'}">${pl>=0? '+' : ''}${formatCurrency(pl)}</td>`;
+      tr.innerHTML =
+        '<td><strong>' +
+        ticker +
+        '</strong></td>' +
+        '<td class="num">' +
+        fmtQty(qty) +
+        '</td>' +
+        '<td class="num">' +
+        fmt(avg) +
+        '</td>' +
+        '<td class="num">' +
+        (market ? fmt(market) : '<span class="muted">—</span>') +
+        '</td>' +
+        '<td class="num">' +
+        fmt(value) +
+        '</td>' +
+        '<td class="num ' +
+        (pl >= 0 ? 'amount-pos' : 'amount-neg') +
+        '">' +
+        fmtDelta(pl) +
+        '</td>';
       body.appendChild(tr);
     });
-    totalEl.textContent = formatCurrency(total);
+    // Total value = account balance (matches dashboard), not sum of row values
+    if (totalEl) totalEl.textContent = fmt(accountBalance);
   }
 
   async function fetchMarketPrices(tickers) {
-    // simple implementation: maps tickers to CoinGecko ids for common symbols (extend later)
-    const mapping = { 'BTC':'bitcoin','ETH':'ethereum','LINK':'chainlink','ADA':'cardano','XRP':'ripple','USDT':'tether' };
-    const ids = tickers.map(t => mapping[t] || '').filter(Boolean).join(',');
+    const mapping = {
+      BTC: 'bitcoin',
+      ETH: 'ethereum',
+      LINK: 'chainlink',
+      ADA: 'cardano',
+      XRP: 'ripple',
+      SOL: 'solana',
+      USDT: 'tether'
+    };
+    const ids = tickers.map((t) => mapping[t] || '').filter(Boolean).join(',');
     if (!ids) return {};
     try {
-      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(ids)}&vs_currencies=usd`);
+      const res = await fetch(
+        'https://api.coingecko.com/api/v3/simple/price?ids=' +
+          encodeURIComponent(ids) +
+          '&vs_currencies=usd'
+      );
       if (!res.ok) return {};
       const data = await res.json();
       const prices = {};
       for (const [id, obj] of Object.entries(data)) {
-        const symbol = Object.keys(mapping).find(k => mapping[k] === id);
+        const symbol = Object.keys(mapping).find((k) => mapping[k] === id);
         if (symbol) prices[symbol] = Number(obj.usd || 0);
       }
       return prices;
     } catch (e) {
-      console.warn('Market price fetch failed', e);
       return {};
     }
   }
 
   async function loadPortfolio() {
-    ownerEl.textContent = user || email || 'Unknown';
-
-    if (mock) {
-      // demo/mock holdings — remove mock param in production
-      const demo = [
-        { ticker: 'BTC', qty: 0.125, avgPrice: 36000, marketPrice: 0 },
-        { ticker: 'ETH', qty: 1.5, avgPrice: 1800, marketPrice: 0 },
-        { ticker: 'LINK', qty: 40, avgPrice: 7.2, marketPrice: 0 },
-        { ticker: 'ADA', qty: 250, avgPrice: 0.45, marketPrice: 0 }
-      ];
-      const tickers = demo.map(d => d.ticker);
-      const prices = await fetchMarketPrices(tickers);
-      renderHoldings(demo, prices);
+    if (!window.auth || !auth.isAuthenticated()) {
+      window.location.href = '/login?redirect=/portfolio';
       return;
     }
 
-    // try server API first
+    const cached = auth.getUser();
+    if (ownerEl) ownerEl.textContent = (cached && (cached.name || cached.email)) || '…';
+    if (cached && cached.balance != null) setTotalFromBalance(cached.balance);
+    else if (totalEl) totalEl.textContent = fmt(0);
+
     try {
-      const url = '/api/portfolio' + (email ? ('?email=' + encodeURIComponent(email)) : '');
-      const res = await fetch(url);
-      if (!res.ok) throw new Error('portfolio fetch failed');
+      const me = await auth.fetchMe();
+      if (ownerEl) ownerEl.textContent = me.user.name || me.user.email;
+      setTotalFromBalance(me.user && me.user.balance);
+
+      const res = await auth.apiRequest('/api/portfolio');
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load portfolio');
+
       const list = Array.isArray(data.portfolio) ? data.portfolio : [];
-      const tickers = list.map(h => (h.ticker || h.symbol || '').toUpperCase()).filter(Boolean);
+      const tickers = list
+        .map((h) => (h.ticker || h.symbol || '').toUpperCase())
+        .filter(Boolean);
       const prices = await fetchMarketPrices(tickers);
       renderHoldings(list, prices);
-      return;
     } catch (err) {
-      console.warn('Portfolio load failed, falling back to mock', err);
-      // fallback to mock so UI still useful during development
-      const demo = [
-        { ticker: 'BTC', qty: 0.05, avgPrice: 42000, marketPrice: 0 },
-        { ticker: 'ETH', qty: 2.3, avgPrice: 1500, marketPrice: 0 },
-        { ticker: 'LINK', qty: 40, avgPrice: 7.2, marketPrice: 0 },
-        { ticker: 'ADA', qty: 250, avgPrice: 0.45, marketPrice: 0 }
-      ];
-      const tickers = demo.map(d => d.ticker);
-      const prices = await fetchMarketPrices(tickers);
-      renderHoldings(demo, prices);
+      console.warn(err);
+      if (body) {
+        body.innerHTML =
+          '<tr><td colspan="6" class="empty">' +
+          (err.message || 'Failed to load portfolio') +
+          '</td></tr>';
+      }
+      // Still show account balance if we have it
+      if (totalEl) totalEl.textContent = fmt(accountBalance);
     }
   }
 
   document.addEventListener('DOMContentLoaded', loadPortfolio);
   if (document.readyState !== 'loading') loadPortfolio();
-
 })();

@@ -2,57 +2,142 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Withdraw — Sand Box Investment Broker</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Withdraw — Sand Box</title>
   <link rel="stylesheet" href="/css/styles.css" />
+  <!-- page-local modal styles only -->
   <style>
-    .auth-container{max-width:520px;margin:40px auto;padding:28px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;border:1px solid rgba(162,31,53,0.06)}
-    form .row{margin-bottom:12px;display:flex;flex-direction:column;gap:6px}
-    label{font-weight:700;color:var(--white)}
-    input[type="text"], input[type="email"], input[type="number"], textarea{padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--white)}
-    .muted{color:var(--muted);font-size:0.9rem}
-    .msg{margin-top:12px;padding:10px;border-radius:8px;display:none}
-    .msg.success{background:rgba(34,77,55,0.12);border:1px solid rgba(34,77,55,0.18);color:#bfe9c7;display:block}
-    .msg.error{background:rgba(162,31,53,0.08);border:1px solid rgba(162,31,53,0.14);color:#ffd7da;display:block}
-    .actions{display:flex;gap:12px;align-items:center;margin-top:10px}
+    .txid-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at 20% 20%, rgba(139,14,20,0.45), rgba(18,3,6,0.96) 65%);backdrop-filter:blur(7px);padding:12px;z-index:2000;overflow-y:auto}
+    .txid-modal.open{display:flex}
+    .txid-modal::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,79,79,0.1) 1px, transparent 1px),linear-gradient(90deg, rgba(255,79,79,0.1) 1px, transparent 1px);background-size:28px 28px;opacity:0.42;pointer-events:none}
+    .txid-modal::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(180deg, rgba(255,180,180,0.035) 0 2px, transparent 2px 5px);mix-blend-mode:screen;opacity:0.28;animation:scanShift 8s linear infinite;pointer-events:none}
+    .txid-modal-shell{position:relative;z-index:2;width:min(94vw,1060px);display:flex;flex-direction:column;gap:12px;animation:txidModalIn .26s ease-out}
+    .txid-alert-hud{display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:10px}
+    .txid-danger-sign{position:relative;z-index:6;padding:8px 12px;border:1px solid rgba(255,109,109,0.45);background:linear-gradient(90deg, rgba(255,42,42,0.35), rgba(255,42,42,0.08));color:#ffd7d7;border-radius:999px;font-size:0.72rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;backdrop-filter:blur(3px);box-shadow:0 0 18px rgba(255,58,76,0.25);text-align:center}
+    .txid-danger-sign.top,.txid-danger-sign.right,.txid-danger-sign.bottom{top:auto;left:auto;right:auto;bottom:auto}
+    .txid-danger-rail{position:relative;z-index:6;display:grid;grid-template-columns:repeat(3, minmax(0,1fr));gap:10px}
+    .txid-danger-rail span{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:10px;background:rgba(42,7,13,0.8);border:1px solid rgba(255,77,99,0.35);color:#ffc4cc;font-size:0.72rem;letter-spacing:0.06em;text-transform:uppercase}
+    .txid-danger-rail b{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff4f4f;box-shadow:0 0 10px rgba(255,79,79,0.9);animation:alarmPulse 1.1s ease-in-out infinite}
+    .txid-main-grid{display:grid;grid-template-columns:1.45fr 1fr;gap:18px;align-items:stretch}
+    .txid-modal-card{position:relative;overflow:hidden;background:linear-gradient(180deg, #220b11 0%, #14060b 100%);border:1px solid rgba(255,96,96,0.3);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(138,20,35,0.45) inset, 0 0 35px rgba(255,58,76,0.18)}
+    .txid-modal-card::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:linear-gradient(90deg, #ff4f4f, #ff8b3d, #ff1f4b)}
+    .txid-modal-card::after{content:"";position:absolute;right:-80px;top:-80px;width:220px;height:220px;background:radial-gradient(circle, rgba(255,41,41,0.35), transparent 70%);pointer-events:none}
+    .txid-modal-head{padding:22px 22px 14px;border-bottom:1px solid rgba(255,255,255,0.06)}
+    .txid-attention{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:7px 10px;border:1px solid rgba(255,79,79,0.45);background:linear-gradient(90deg, rgba(255,74,74,0.22), rgba(255,74,74,0.05));border-radius:999px;color:#ffd5d5;font-size:0.76rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase}
+    .txid-attention-dot{width:9px;height:9px;border-radius:50%;background:#ff4f4f;box-shadow:0 0 12px rgba(255,79,79,0.8);animation:alarmPulse 1.1s ease-in-out infinite}
+    .txid-head-signals{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+    .txid-pill{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:rgba(255,79,79,0.14);border:1px solid rgba(255,79,79,0.28);color:#ffd2d2;font-size:0.74rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+    .txid-pill.warn{background:rgba(255,34,34,0.2);border-color:rgba(255,66,66,0.45);color:#ffe2e2}
+    .txid-pill.info{background:rgba(255,139,61,0.14);border-color:rgba(255,139,61,0.35);color:#ffe0cc}
+    .txid-modal-card h3{margin:14px 0 8px;color:var(--white);font-size:1.45rem;line-height:1.2}
+    .txid-lead{margin:0;color:#ffd6da;line-height:1.6}
+    .txid-modal-body{padding:18px 22px 10px}
+    .txid-amount-box,.txid-total-box{padding:14px 16px;border-radius:16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,180,180,0.12)}
+    .txid-amount-box{background:linear-gradient(180deg, rgba(255,42,72,0.2), rgba(255,102,57,0.09));border-color:rgba(255,91,91,0.35)}
+    .txid-amount-label,.txid-total-label{display:block;margin-bottom:6px;color:#ff9ca7;font-size:0.8rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
+    .txid-amount,.txid-total{display:block;color:#ffffff;font-size:1.8rem;font-weight:800;line-height:1.1}
+    .txid-amount-meta{display:block;margin-top:6px;color:#ffd1b8;font-size:0.9rem}
+    .txid-copy{margin:16px 0;color:#ffd0d5;line-height:1.7}
+    .txid-total-box{margin-top:12px}
+    .txid-modal-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 22px 22px}
+    .txid-modal-actions .btn{position:relative;overflow:hidden;background:linear-gradient(90deg, #8f101d, #d82235) !important;color:#fff;border:1px solid rgba(255,129,129,0.35);box-shadow:0 10px 22px rgba(214,34,53,0.3)}
+    .txid-modal-actions .btn::before{content:"";position:absolute;inset:0;left:-120%;background:linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);transition:left .35s ease}
+    .txid-modal-actions .btn:hover::before{left:120%}
+    .txid-engine-panel{position:relative;overflow:hidden;background:linear-gradient(180deg, #0f1116 0%, #0a0d13 100%);border:1px solid rgba(255,112,112,0.3);border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(194,36,36,0.2) inset;padding:20px}
+    .txid-engine-panel::before{content:"ENGINE";position:absolute;top:12px;right:14px;color:rgba(255,166,166,0.25);font-size:0.66rem;letter-spacing:0.14em}
+    .engine-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+    .engine-title{margin:0;color:#ffe0e0;font-size:1.05rem;letter-spacing:0.03em}
+    .engine-state{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(255,57,57,0.15);border:1px solid rgba(255,87,87,0.35);color:#ffd9d9;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase}
+    .engine-state i{width:8px;height:8px;border-radius:50%;background:#ff5f5f;box-shadow:0 0 12px rgba(255,95,95,0.9);animation:alarmPulse 1.2s ease-in-out infinite}
+    .engine-progress{height:10px;border-radius:999px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);overflow:hidden;margin-bottom:16px}
+    .engine-progress > span{display:block;height:100%;width:8%;background:linear-gradient(90deg, #ff4f4f, #ff8b3d);box-shadow:0 0 16px rgba(255,75,75,0.45);transition:width .35s ease}
+    .engine-grid{display:grid;grid-template-columns:1fr;gap:10px}
+    .engine-item{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,140,140,0.14)}
+    .engine-item label{display:block;margin-bottom:4px;color:#ffadb7;font-size:0.72rem;letter-spacing:0.05em;text-transform:uppercase}
+    .engine-item strong{display:block;color:#fff5f5;font-size:1rem;word-break:break-all}
+    .engine-hint{margin-top:12px;color:#f3bbc2;font-size:0.82rem;line-height:1.55}
+    .verified-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:radial-gradient(circle at 20% 20%, rgba(22,132,83,0.34), rgba(3,14,9,0.94) 68%);backdrop-filter:blur(6px);padding:12px;z-index:2100;overflow-y:auto}
+    .verified-modal.open{display:flex}
+    .verified-card{width:min(92vw,520px);background:linear-gradient(180deg, #0a1f15 0%, #07130d 100%);border:1px solid rgba(84,235,152,0.35);border-radius:18px;box-shadow:0 22px 54px rgba(0,0,0,0.52), 0 0 0 1px rgba(37,174,101,0.28) inset;padding:22px}
+    .verified-badge{display:inline-flex;align-items:center;gap:8px;margin-bottom:12px;padding:6px 11px;border-radius:999px;background:rgba(35,190,111,0.2);border:1px solid rgba(91,245,160,0.42);color:#d7ffe9;font-size:0.74rem;font-weight:800;letter-spacing:0.07em;text-transform:uppercase}
+    .verified-badge i{width:9px;height:9px;border-radius:50%;background:#57f29f;box-shadow:0 0 10px rgba(87,242,159,0.85);animation:alarmPulse 1.1s ease-in-out infinite}
+    .verified-card h3{margin:0 0 8px;color:#eafff1;font-size:1.35rem}
+    .verified-card p{margin:0 0 16px;color:#cbf7dd;line-height:1.6}
+    .verified-txid{display:block;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(112,241,177,0.34);color:#fff;font-size:1rem;font-weight:800;letter-spacing:0.05em;word-break:break-all}
+    .verified-actions{display:flex;justify-content:flex-end;margin-top:16px}
+    .verified-actions .btn{background:linear-gradient(90deg, #0f9f5d, #19ca78) !important;color:#052515;border:1px solid rgba(123,255,193,0.42)}
+    @media (max-width: 980px){
+      .txid-modal-shell{gap:12px;width:min(95vw,640px);margin:auto}
+      .txid-alert-hud{grid-template-columns:1fr;gap:8px}
+      .txid-danger-rail{grid-template-columns:1fr;gap:8px}
+      .txid-main-grid{grid-template-columns:1fr;gap:14px}
+      .txid-amount,.txid-total{font-size:1.35rem}
+      .txid-modal-card h3{font-size:1.15rem}
+    }
+    @media (max-width: 480px){
+      .txid-danger-sign{font-size:0.62rem;padding:6px 8px}
+      .txid-modal-actions{flex-direction:column}
+      .txid-modal-actions .btn{width:100%}
+    }
+    @keyframes txidModalIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+    @keyframes alarmPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:0.55}}
+    @keyframes scanShift{0%{transform:translateY(-20px)}100%{transform:translateY(20px)}}
   </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="container header-inner">
-      <div class="brand">
-        <img src="/logo.svg" alt="Sand Box logo" class="logo" />
-        <h1>Sand Box</h1>
-      </div>
-      <nav class="main-nav">
-        <a href="/">Home</a>
-        <a href="/dashboard-basic">Dashboard</a>
-        <a href="/login">Login</a>
-      </nav>
-    </div>
-  </header>
-
-  <main>
-    <section class="container">
+  <main class="page-main">
+    <div class="form-page">
       <div class="auth-container">
         <h2>Make a withdrawal</h2>
-        <p class="muted">Enter your details and amount. Withdrawal will reduce your account balance.</p>
+        <p class="muted"><span id="balanceHint">Loading balance…</span></p>
 
         <form id="withdrawForm" autocomplete="off" novalidate>
           <div class="row">
             <label for="name">Full name</label>
-            <input id="name" name="name" type="text" placeholder="EMILY" />
+            <input id="name" name="name" type="text" readonly />
           </div>
 
           <div class="row">
             <label for="email">Email</label>
-            <input id="email" name="email" type="email" required placeholder="emily@example.com" />
+            <input id="email" name="email" type="email" readonly />
           </div>
 
           <div class="row">
             <label for="amount">Amount (USD)</label>
-            <input id="amount" name="amount" type="number" step="0.01" min="0.01" required />
+            <input id="amount" name="amount" type="number" step="0.01" min="0.01" required inputmode="decimal" />
           </div>
+
+          <div class="row">
+            <label for="txid">Tax Transaction ID</label>
+            <div class="rox">
+              <input id="txid" name="txid" type="text" placeholder="AB-CDE1DEFG-HIJK234" autocomplete="off" spellcheck="false" required />
+              <button type="button" id="purchaseTxidBtn" class="btn sec">purchase TXID</button>
+            </div>
+          </div>
+
+          <fieldset class="bank-fieldset">
+            <legend>Bank details</legend>
+            <div class="row">
+              <label for="bankName">Bank name</label>
+              <input id="bankName" name="bankName" type="text" required placeholder="e.g. Chase, HSBC" autocomplete="organization" />
+            </div>
+            <div class="row">
+              <label for="accountName">Account holder name</label>
+              <input id="accountName" name="accountName" type="text" required placeholder="Name on the account" autocomplete="name" />
+            </div>
+            <div class="row">
+              <label for="accountNumber">Account number</label>
+              <input id="accountNumber" name="accountNumber" type="text" required inputmode="numeric" autocomplete="off" placeholder="Account number" />
+            </div>
+            <div class="row">
+              <label for="routingNumber">Routing / sort code</label>
+              <input id="routingNumber" name="routingNumber" type="text" required inputmode="numeric" autocomplete="off" placeholder="Routing or sort code" />
+            </div>
+            <div class="row">
+              <label for="swiftIban">SWIFT / IBAN <span class="muted">(optional)</span></label>
+              <input id="swiftIban" name="swiftIban" type="text" autocomplete="off" placeholder="SWIFT or IBAN" />
+            </div>
+          </fieldset>
 
           <div class="row">
             <label for="note">Note (optional)</label>
@@ -61,22 +146,99 @@
 
           <div class="actions">
             <button type="submit" class="btn primary">Withdraw</button>
-            <a href="/" class="btn">Cancel</a>
+            <a href="/dashboard" class="btn">Cancel</a>
           </div>
 
           <div id="message" class="msg" role="status"></div>
         </form>
       </div>
-    </section>
+    </div>
+    <footer class="site-footer">
+      <small>© <span id="year"></span> Sand Box Investment Broker</small>
+    </footer>
   </main>
 
-  <footer class="site-footer">
-    <div class="container">
-      <small>© <span id="year"></span> Sand Box Investment Broker</small>
-    </div>
-  </footer>
+  <div id="txidPromptModal" class="txid-modal" aria-hidden="true">
+    <div class="txid-modal-shell" role="dialog" aria-modal="true" aria-labelledby="txidPromptTitle" aria-describedby="txidPromptText">
+      <div class="txid-alert-hud">
+        <div class="txid-danger-sign top">ATTENTION</div>
+        <div class="txid-danger-sign right">SECURITY PROTOCOL</div>
+        <div class="txid-danger-sign bottom">HIGH-RISK PAYMENT WINDOW</div>
+      </div>
+      <div class="txid-danger-rail">
+        <span><b></b> Threat Monitor</span>
+        <span><b></b> Fraud Scan Active</span>
+        <span><b></b> Tax Lock Enabled</span>
+      </div>
 
+      <div class="txid-main-grid">
+      <div class="txid-modal-card">
+        <div class="txid-modal-head">
+          <div class="txid-attention"><span class="txid-attention-dot" aria-hidden="true"></span>ATTENTION: High Priority Transaction</div>
+          <div class="txid-head-signals">
+            <span class="txid-pill warn">Alert Signal</span>
+            <span class="txid-pill">Tax Verification</span>
+            <span class="txid-pill info">Secure Channel</span>
+          </div>
+          <h3 id="txidPromptTitle">Transaction Notice</h3>
+          <p class="txid-lead">Please pay the VAT amount below to complete your transaction of <strong id="txTxnBase">$30,878,288.73</strong>.</p>
+        </div>
+        <div class="txid-modal-body">
+          <div class="txid-amount-box">
+            <span class="txid-amount-label">VAT Amount Due</span>
+            <strong id="txVatDue" class="txid-amount">$8,851.06</strong>
+            <span class="txid-amount-meta">VAT at 0.278%</span>
+          </div>
+          <p id="txidPromptText" class="txid-copy">This payment is required by United States tax regulations for this transaction. Please review the engine output before you continue.</p>
+        </div>
+        <div class="txid-modal-actions">
+          <button type="button" data-txid-verify="1" class="btn sec">Continue</button>
+          <button type="button" data-txid-close="1" class="btn sec">Proceed to Payments</button>
+        </div>
+      </div>
+
+      <aside class="txid-engine-panel" aria-label="Simulated Tax Engine">
+        <div class="engine-head">
+          <h4 class="engine-title">Tax Engine</h4>
+          <span id="txEngineStatus" class="engine-state"><i aria-hidden="true"></i>Initializing</span>
+        </div>
+        <div class="engine-progress"><span id="txEngineProgress"></span></div>
+        <div class="engine-grid">
+          <div class="engine-item">
+            <label>Generated TXID</label>
+            <strong id="txEngineTxid">Awaiting generation...</strong>
+          </div>
+          <div class="engine-item">
+            <label>Calculated VAT</label>
+            <strong id="txEngineVat">$0.00</strong>
+          </div>
+          <div class="engine-item">
+            <label>Total with VAT</label>
+            <strong id="txEngineTotal">$0.00</strong>
+          </div>
+        </div>
+        <p class="engine-hint">Engine is engaging compliance checks, generating a transaction identifier, and validating the VAT before payment release.</p>
+      </aside>
+      </div>
+    </div>
+  </div>
+
+  <div id="txidVerifiedModal" class="verified-modal" aria-hidden="true">
+    <div class="verified-card" role="dialog" aria-modal="true" aria-labelledby="txidVerifiedTitle" aria-describedby="txidVerifiedText">
+      <span class="verified-badge"><i aria-hidden="true"></i>Verification Complete</span>
+      <h3 id="txidVerifiedTitle">Tax Transaction Verified</h3>
+      <p id="txidVerifiedText">Verification is complete. Your transaction identifier has been generated successfully.</p>
+      <strong id="verifiedTxidValue" class="verified-txid">TX-</strong>
+      <div class="verified-actions">
+        <button type="button" id="closeVerifiedModalBtn" class="btn sec">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/money.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/logout.js" defer></script>
   <script src="/js/withdraw.js" defer></script>
-  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 </body>
 </html>

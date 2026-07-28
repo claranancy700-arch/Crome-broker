@@ -2,53 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Page Not Found — Sand Box Investment Broker</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Page Not Found — Sand Box</title>
   <link rel="stylesheet" href="/css/styles.css" />
-  <style>
-    .error-container { max-width: 640px; margin: 120px auto; padding: 48px 28px; text-align: center; }
-    .error-code { font-size: 4rem; font-weight: 800; color: var(--wine1); margin-bottom: 12px; }
-    .error-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 12px; }
-    .error-desc { color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
-    .error-actions { display: flex; gap: 12px; justify-content: center; }
-  </style>
 </head>
 <body>
-  <header class="site-header">
-    <div class="container header-inner">
-      <div class="brand">
-        <img src="/logo.svg" alt="CROME FX logo" class="logo" />
-        <h1>Sand Box</h1>
-      </div>
-      <nav class="main-nav">
-        <a href="/">Home</a>
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
-      </nav>
+  <main class="page-main">
+    <div class="form-page">
+      <section class="error-container auth-container">
+        <div class="error-code">404</div>
+        <div style="font-size:1.25rem;font-weight:800;margin-bottom:12px">Page Not Found</div>
+        <p class="muted" style="margin-bottom:24px;line-height:1.6">
+          The page you're looking for doesn't exist or has been moved.
+        </p>
+        <div class="error-actions">
+          <a href="/" class="btn primary">Go Home</a>
+          <a href="/login" class="btn">Sign In</a>
+          <a href="/dashboard" class="btn">Dashboard</a>
+        </div>
+      </section>
     </div>
-  </header>
-
-  <main>
-    <section class="error-container">
-      <div class="error-code">404</div>
-      <div class="error-title">Page Not Found</div>
-      <div class="error-desc">
-        The page you're looking for doesn't exist or has been moved.<br>
-        Check the URL and try again, or head back to the home page.
-      </div>
-      <div class="error-actions">
-        <a href="/" class="btn primary">Go Home</a>
-        <a href="/login" class="btn">Sign In</a>
-      </div>
-    </section>
+    <footer class="site-footer">
+      <small>© <span id="year"></span> Sand Box Investment Broker</small>
+    </footer>
   </main>
 
-  <footer class="site-footer">
-    <div class="container">
-      <small>© <span id="year"></span> Sand Box Investment Broker</small>
-    </div>
-  </footer>
-
-  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/nav.js"></script>
 </body>
 </html>

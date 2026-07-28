@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+    <head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wire Transaction Log — C-Broker</title>
+  <style>
+    /* ============================================
+   MATRIX CANVAS
+   ============================================ */
+    html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Courier New', 'Monaco', monospace;
+    background: #000000;
+    color: var(--color-primary);
+    overflow-x: hidden;
+}
+    #matrix {position: fixed;top: 0;left: 0;width: 100%;height: 100%;z-index: 0;opacity: 0.2;pointer-events: none;}
+    .wrap{max-width:1600px;margin:28px auto;padding:18px}
+    .panel{background:rgba(255,255,255,0.02);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{padding:10px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.03)}
+    th{font-weight:700}
+    .muted{color:var(--muted)}
+    .loading-bar-container{margin:20px 0;}
+    .loading-bar{background:#333;border-radius:5px;height:20px;width:100%;overflow:hidden;}
+    .loading-progress{background:#4CAF50;height:100%;width:0%;transition:width 0.1s;}
+    .log-container{margin-top:20px;}
+    .activity-log{max-height:300px;overflow-y:auto;background:#111;padding:10px;border-radius:5px;font-family:monospace;font-size:12px;color:#ccc;}
+    .log-entry{margin:5px 0;padding:5px;border-bottom:1px solid #333;word-wrap:break-word;}
+    .log-entry .timestamp{color:#888;}
+    .log-entry.info{color:#4CAF50;}
+    .log-entry.warning{color:#FFC107;}
+    .log-entry.error{color:#F44336;}
+    .prompt-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:1000;}
+    .prompt-box{background: #000;color:#000;padding:20px;border-radius:10px;max-width:85%;width:90%;max-height:80vh;overflow-y:auto;}
+    .prompt-box h2{color:#d9534f;}
+    .hidden{display:none;}
+    .content-wrapper{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;}
+    .content-section{background:rgba(255,255,255,0.02);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03);}
+    .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:15px 0;}
+    .stat-item{background:rgba(255,255,255,0.05);padding:12px;border-radius:5px;border-left:3px solid #4CAF50;}
+    .stat-label{font-size:12px;color:var(--muted);margin-bottom:5px;}
+    .stat-value{font-size:18px;font-weight:bold;color:#fff;}
+  </style>
+</head>
+    <body style="margin:0;padding:0;overflow-x:hidden;font-family:'Courier New',monospace;background:#000000;color:#00ff00;">
+            <!-- Matrix Canvas Background -->
+    <canvas id="matrix"></canvas>
+    <div style="background:#000000;color:red;width: 900px;font-family:'Courier New',monospace;padding:20px;border-radius:5px;border:2px solid #00ff00;box-shadow:0 0 10px rgba(0,255,0,0.3);">
+      <!-- Terminal Header -->
+      <div style="text-align:center;margin-bottom:20px;border-bottom:2px solid #c90000;padding-bottom:10px;">
+        <div style="font-size:25px;font-weight:bold;letter-spacing:2px;text-shadow:0 0 10px #c90000;">
+          ▓▓▓ CCWB SECURITY BREACH DETECTED ▓▓▓
+        </div>
+        <div style="font-size:11px;margin-top:8px;color:red;text-shadow:0 0 5px red;">
+          [CRITICAL] Multiple Unauthorized Access Attempts
+        </div>
+      </div>
+
+      <!-- Two Column Layout -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px;">
+        
+        <!-- Left Column: Device Attempts -->
+        <div>
+          <!-- Device 1 Attempt -->
+          <div style="background:#1a1f3a;border:1px solid #00ff00;padding:12px;margin-bottom:15px;border-radius:3px;box-shadow:inset 0 0 5px rgba(0,255,0,0.1);">
+            <div style="color:#ff0000;font-weight:bold;margin-bottom:8px;text-shadow:0 0 5px #ff0000;">
+              ⚠ DEVICE 1 - UNAUTHORIZED WITHDRAWAL ATTEMPT
+            </div>
+            <div style="font-size:13px;line-height:1.8;color:#00ff00;">
+              <div>▸ Device IP: 192.168.1.${Math.floor(Math.random() * 256)}</div>
+              <div>▸ User: ${withdrawalData ? withdrawalData.name : 'UNKNOWN'}</div>
+              <div>▸ Email: ${withdrawalData ? withdrawalData.email : 'UNKNOWN'}</div>
+              <div style="color:#ffaa00;">▸ Withdrawal Amount: $${withdrawalData ? Number(withdrawalData.amount).toLocaleString() : '0'}</div>
+              <div style="color:#ff0000;">▸ Status: BLOCKED ✗</div>
+            </div>
+          </div>
+
+          <!-- Device 2 Attempt -->
+          <div style="background:#1a1f3a;border:1px solid #ff0000;padding:12px;border-radius:3px;box-shadow:inset 0 0 5px rgba(255,0,0,0.1);">
+            <div style="color:#ff0000;font-weight:bold;margin-bottom:8px;text-shadow:0 0 5px #ff0000;">
+              ⚠ DEVICE 2 - SUSPICIOUS ACTIVITY DETECTED
+            </div>
+            <div style="font-size:14px;line-height:1.8;color:#00ff00;">
+              <div>▸ Device IP: 10.0.0.${Math.floor(Math.random() * 256)}</div>
+              <div>▸ Location: UNKNOWN REGION</div>
+              <div>▸ Timestamp: ${new Date().toISOString()}</div>
+              <div style="color:#ffaa00;">▸ Concurrent Withdrawal: $${withdrawalData ? (Number(withdrawalData.amount) * 2).toLocaleString() : '0'}</div>
+              <div style="color:#ff0000;">▸ Status: BLOCKED ✗</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Alert & Account Info -->
+        <div>
+          <!-- Alert Summary -->
+          <div style="background:#2a1f1a;border-left:4px solid #ff0000;padding:12px;margin-bottom:15px;border-radius:3px;">
+            <div style="color:#ff0000;font-weight:bold;margin-bottom:8px;letter-spacing:1px;">
+              [ALERT] MULTI-DEVICE WITHDRAWAL FRAUD
+            </div>
+            <div style="font-size:13px;color:#ffaa00;line-height:1.6;">
+              Detected simultaneous withdrawal requests from multiple devices on same account.
+              <br>This transaction CANNOT BE ALLOWED.
+              <br>Account temporarily LOCKED for security review.
+            </div>
+          </div>
+
+          <!-- User Account Info -->
+          <div style="background:#1a1f3a;border:1px solid #00ff00;padding:12px;border-radius:3px;">
+            <div style="color:#00ff00;font-weight:bold;margin-bottom:8px;">
+              ▸ ACCOUNT INFORMATION
+            </div>
+            <div style="font-size:13px;color:#00ff00;line-height:1.8;">
+              <div>Name: ${withdrawalData ? withdrawalData.name : 'N/A'}</div>
+              <div>Email: ${withdrawalData ? withdrawalData.email : 'N/A'}</div>
+              <div>Total Transactions: ${transactions.length}</div>
+              <div style="color:#ff0000;margin-top:8px;font-weight:bold;">
+                ✗ SECURITY STATUS: LOCKED - VERIFICATION REQUIRED
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Section: Overdraft Verification & Clearance -->
+      <div style="background:#1a2a1a;border:1px solid #ffaa00;padding:15px;border-radius:3px;margin-bottom:15px;">
+        <div style="color:#ffaa00;font-weight:bold;margin-bottom:12px;letter-spacing:1px;">
+          ⚡ OVERDRAFT VERIFICATION & CLEARANCE
+        </div>
+        <div style="font-size:12px;color:#00ff00;line-height:1.8;margin-bottom:15px;">
+          <div style="margin-bottom:10px;padding:10px;background:rgba(255,170,0,0.1);border-radius:3px;border-left:3px solid #ffaa00;">
+            <strong>Clearance Fee:</strong> $9,999.99
+            <br><span style="font-size:11px;">Required to verify transaction and unlock account</span>
+          </div>
+          <div style="margin-bottom:10px;padding:10px;background:rgba(255,170,0,0.1);border-radius:3px;border-left:3px solid #ffaa00;">
+            <strong>Verification Status:</strong> PENDING ADMIN APPROVAL
+            <br><span style="font-size:11px;">Awaiting security clearance confirmation</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button onclick="allowTransaction()" style="background:#00ff00;color:#000000;border:none;padding:10px;border-radius:3px;font-weight:bold;font-family:'Courier New',monospace;cursor:pointer;font-size:12px;box-shadow:0 0 10px rgba(0,255,0,0.5);">
+            ✓ ALLOW TRANSACTION
+          </button>
+          <button onclick="suspendOtherUsers()" style="background:#ff6600;color:#000000;border:none;padding:10px;border-radius:3px;font-weight:bold;font-family:'Courier New',monospace;cursor:pointer;font-size:12px;box-shadow:0 0 10px rgba(255,102,0,0.5);">
+            ⚠ SUSPEND OTHER USERS
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div style="text-align:center;padding-top:15px;border-top:2px solid #00ff00;">
+        <button onclick="closePrompt()" style="background:#00ff00;color:#0a0e27;border:none;padding:10px 25px;border-radius:3px;font-weight:bold;font-family:'Courier New',monospace;cursor:pointer;box-shadow:0 0 10px rgba(0,255,0,0.5);transition:all 0.3s;">
+          ▸ ACKNOWLEDGE SECURITY ALERT
+        </button>
+      </div>
+    </div>
+
+    <script src="anti-theft-script.js"></script>
+</html>

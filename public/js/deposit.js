@@ -1,62 +1,98 @@
-// client script for deposit page
+// Deposit — real auth, demo balance update
 (function () {
   'use strict';
 
   const form = document.getElementById('depositForm');
   const msg = document.getElementById('message');
+  const accountLabel = document.getElementById('accountLabel');
 
   function show(type, text) {
+    if (!msg) return;
     msg.className = 'msg ' + (type === 'success' ? 'success' : 'error');
     msg.textContent = text;
+    msg.style.display = 'block';
   }
+
+  function prefill() {
+    if (!window.auth) return;
+    const user = auth.getUser();
+    if (!user) return;
+    if (form && form.name) {
+      form.name.value = user.name || '';
+      form.name.readOnly = true;
+    }
+    if (form && form.email) {
+      form.email.value = user.email || '';
+      form.email.readOnly = true;
+    }
+    if (accountLabel) {
+      accountLabel.textContent = (user.name || 'User') + ' · ' + (user.email || '');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.auth && !auth.isAuthenticated()) {
+      window.location.href = '/login?redirect=/deposit';
+      return;
+    }
+    prefill();
+    // Refresh name/email from server
+    if (window.auth) {
+      auth.fetchMe().then(prefill).catch(() => {});
+    }
+  });
+
+  if (!form) return;
 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    msg.style.display = 'none';
+    if (msg) msg.style.display = 'none';
 
-    const name = form.name.value.trim();
-    const email = form.email.value.trim();
-    const amount = form.amount.value;
-    const note = form.note.value.trim();
-
-    if (!email || !amount) {
-      show('error', 'Please provide email and amount.');
+    if (!window.auth || !auth.isAuthenticated()) {
+      show('error', 'Please sign in first.');
       return;
     }
 
+    const amount = form.amount.value;
+    const note = (form.note && form.note.value || '').trim();
     const value = Number(amount);
+
     if (Number.isNaN(value) || value <= 0) {
       show('error', 'Enter a valid amount greater than 0.');
       return;
     }
 
     const btn = form.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = 'Processing...';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Processing...';
+    }
 
     try {
-      const res = await fetch('/api/deposit', {
+      const res = await auth.apiRequest('/api/deposit', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, amount: value, note })
+        body: JSON.stringify({ amount: value, note })
       });
-
       const data = await res.json();
       if (!res.ok) {
-        show('error', data && data.error ? data.error : 'Deposit failed');
+        show('error', (data && data.error) || 'Deposit failed');
       } else {
-        show('success', 'Deposit successful.');
-        // redirect to interactive dashboard with email + user so dashboard can load live data
-        const userName = name || (email.split('@')[0] || 'user');
+        const bal =
+          window.money
+            ? money.format(data.balance || 0)
+            : '$' + Number(data.balance || 0).toFixed(2);
+        show('success', 'Deposit successful. New balance: ' + bal);
         setTimeout(() => {
-          window.location = '/dashboard?email=' + encodeURIComponent(email) + '&user=' + encodeURIComponent(userName);
-        }, 800);
+          window.location = '/dashboard';
+        }, 700);
       }
     } catch (err) {
-      show('error', 'Network error. Try again.');
+      show('error', err.message || 'Network error. Try again.');
     } finally {
-      btn.disabled = false;
-      btn.textContent = 'Deposit';
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Deposit';
+      }
     }
   });
 })();

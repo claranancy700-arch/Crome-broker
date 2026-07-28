@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Alert - Fraud Detection</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Matrix Canvas Background -->
+    <canvas id="matrix"></canvas>
+
+    <div class="security-alert-container">
+        <!-- Animated Background Grid -->
+        <div class="background-grid"></div>
+
+        <!-- Main Alert Box -->
+        <div class="alert-box visible">
+            <!-- Header with Warning Icon -->
+            <div class="alert-header">
+                <div class="warning-icon animate-pulse">
+                    <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                        <path
+                            d="M30 5L5 55H55L30 5Z"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            fill="none"
+                        />
+                        <text x="30" y="40" text-anchor="middle" font-size="30" fill="currentColor">!</text>
+                    </svg>
+                </div>
+                <h1 class="alert-title glitch" data-text="">
+                    SECURITY ALERT
+                </h1>
+            </div>
+
+            <!-- Status Bar -->
+            <div class="status-indicator critical">
+                <span class="status-dot"></span>
+                <span class="status-text">CRITICAL THREAT DETECTED</span>
+            </div>
+
+            <!-- Alert Message -->
+            <div class="alert-message">
+                <p class="main-warning">
+                    A suspicious device has connected to your account with fraudulent intent.
+                </p>
+                <p class="sub-warning">
+                    We've detected unauthorized access attempts and fraudulent activities on this
+                    device. Immediate action is required to protect your data and accounts.
+                </p>
+            </div>
+
+            <!-- Device Information -->
+            <div class="device-info-section">
+                <h2 class="section-title">⚠ DETECTED DEVICE</h2>
+                <div class="device-info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Device Name:</span>
+                        <span class="info-value">JUDY GRIMSBY </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Device Type:</span>
+                        <span class="info-value">IPHONE 15</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Last Seen:</span>
+                        <span class="info-value" id="lastSeen">1/12/2026, 10:58:57 AM</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Location:</span>
+                        <span class="info-value">OREGON,USA</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Scan Progress -->
+            <div class="scan-section">
+                <h2 class="section-title">🔍 SECURITY SCAN</h2>
+                <div class="progress-bar-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                    <p class="progress-text"><span id="progressPercent">0</span>% Scanned</p>
+                </div>
+            </div>
+
+            <!-- Detected Threats -->
+            <div class="threats-section" id="threatsSection" style="display: none;">
+                <h2 class="section-title threat-title">🦠 DETECTED THREATS</h2>
+                <ul class="threats-list" id="threatsList">
+                    <!-- Threats will be added here by JavaScript -->
+                </ul>
+            </div>
+
+            <!-- Recommended Action -->
+            <div class="recommendation-section">
+                <h2 class="section-title">⚡ RECOMMENDED ACTION</h2>
+                <div class="recommendation-box">
+                    <p>
+                        To protect your account and data from fraudulent activities, we recommend installing
+                        <strong>Avast Protection</strong> immediately.
+                    </p>
+                    <ul class="features-list">
+                        <li>✓ Real-time device monitoring</li>
+                        <li>✓ Fraud activity detection</li>
+                        <li>✓ Instant threat alerts</li>
+                        <li>✓ Remote device lock capability</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="btn btn-primary btn-glow" onclick="handlePrimaryAction()">
+                    <span class="btn-icon">🛡️</span>
+                    GET AVAST PROTECTION NOW
+                </button>
+                <button class="btn btn-secondary" onclick="handleSecondaryAction()">
+                    <span class="btn-icon">🔐</span>
+                    CHANGE PASSWORD & SECURE ACCOUNT
+                </button>
+                <button class="btn btn-tertiary" onclick="handleTertiaryAction()">
+                    <span class="btn-icon">📋</span>
+                    View Detailed Report
+                </button>
+            </div>
+
+            <!-- Footer Info -->
+            <div class="footer-info">
+                <p class="footer-text">
+                    Last checked: <span class="timestamp" id="timestamp"></span>
+                </p>
+                <p class="footer-disclaimer">
+                    This is a critical security alert. Do not ignore this warning.
+                </p>
+            </div>
+        </div>
+
+        <!-- Floating Elements -->
+        <div class="floating-code">
+            <div class="code-block">01010101</div>
+            <div class="code-block">11001100</div>
+            <div class="code-block">10110101</div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

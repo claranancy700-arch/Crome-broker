@@ -2,103 +2,70 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Dashboard — Sand Box Investment Broker</title>
-  <link rel="stylesheet" href="css/dashboard.css" />
-    <style>
-    /* minimal overrides for the basic dashboard */
-    .grid{grid-template-columns:repeat(2,1fr)}
-    .card{min-height:120px}
-    .notice{margin-bottom:12px;color:var(--muted)}
-    .user-badge{display:inline-block;padding:6px 10px;background:linear-gradient(90deg,var(--wine1),var(--wine2));border-radius:8px;color:#fff;font-weight:700}
-    /* make sparkline area slightly larger for basic dashboard */
-    .spark-svg{height:72px}
-    .refresh-hint{font-size:0.9rem;color:var(--muted);margin-top:8px}
-  </style>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Dashboard — Sand Box</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
-      <div class="brand">
-        <img src="logo.png" class="logo" alt="Sand Box logo" />
-
+  <main class="page-main">
+    <header class="page-header dash-top">
+      <h1>
+        Overview
+      </h1>
+      <div class="page-header__actions dash-actions">
+        <span class="muted">Hello, <span id="userName" class="user-badge">…</span></span>
+        <a id="depositBtn" class="btn primary" href="/deposit">Deposit</a>
+        <a id="withdrawBtn" class="btn" href="/withdraw">Withdraw</a>
       </div>
+    </header>
 
-      <nav class="nav">
-        <a href="/dashboard" class="nav-item active">Overview</a>
-        <a href="/market" class="nav-item">Market</a>
-        <a href="/portfolio" class="nav-item">Portfolio</a>
-        <a href="#" class="nav-item">Orders</a>
-        <a href="#" class="nav-item">Reports</a>
-        <a href="/logout" class="nav-item">Sign out</a>
-      </nav>
+    <section class="grid">
+      <article class="card balance card-anim">
+        <h3>Account balance</h3>
+        <div class="balance-amount metric" id="balance">$0.00</div>
+        <div class="balance-meta metric-label">Updated <span id="lastUpdate">—</span></div>
+      </article>
 
-      <button id="sidebarToggle" class="sidebar-toggle" aria-label="Collapse sidebar">⟨</button>
-    </aside>
-
-    <div class="main">
-      <header class="topbar">
-        <div class="left">
-          <button id="menuToggle" class="icon-btn" aria-label="Toggle sidebar">☰</button>
-          <h1 class="page-title">Overview</h1>
-        </div>
-        <div class="right">
-          <div class="user">
-            <div class="user-name">Hello, <span id="userName" class="user-badge">user</span></div>
-            <button class="avatar-btn" title="Profile">SB</button>
-          </div>
-
-          <!-- deposit quick action -->
-          <a id="depositBtn" class="btn" href="/deposit" title="Make a deposit">Deposit</a>
-
-          <!-- withdraw quick action -->
-          <a id="withdrawBtn" class="btn" href="/withdraw" title="Withdraw funds">Withdraw</a>
-        </div>
-      </header>
-
-      <section class="grid">
-        <article class="card balance card-anim">
-          <h3>Account balance</h3>
-          <div class="balance-amount" id="balance">$0</div>
-          <div class="balance-meta">Updated <span id="lastUpdate">—</span></div>
-        </article>
-
-        <article class="card portfolio card-anim">
-          <h3>Portfolio (snapshot)</h3>
+      <article class="card portfolio card-anim">
+        <h3>Portfolio snapshot</h3>
+        <div class="portfolio-visual">
           <div class="donut" id="donut" aria-hidden="true"></div>
           <div class="legend">
-            <div><span class="pill a"></span> Equities</div>
-            <div><span class="pill b"></span> Bonds</div>
+            <div><span class="pill a"></span> Crypto</div>
+            <div><span class="pill b"></span> Equities</div>
             <div><span class="pill c"></span> Cash</div>
           </div>
-        </article>
+        </div>
+        <p class="muted portfolio-link"><a href="/portfolio">View full portfolio →</a></p>
+      </article>
 
-        <article class="card sparkline card-anim">
-          <h3>Activity sparkline</h3>
-          <svg id="spark" viewBox="0 0 200 40" preserveAspectRatio="none" class="spark-svg" aria-hidden="true">
-            <path id="sparkPath" d="" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          <div class="spark-meta"><span id="price">—</span> <small id="priceChange" class="muted">—</small></div>
-        </article>
+      <article class="card sparkline card-anim">
+        <h3>Activity sparkline</h3>
+        <svg id="spark" viewBox="0 0 200 40" preserveAspectRatio="none" class="spark-svg" aria-hidden="true">
+          <path id="sparkPath" d="" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <div class="spark-meta">
+          <span id="price" class="metric--sm">$0.00</span>
+          <small id="priceChange" class="muted">—</small>
+        </div>
+      </article>
 
-        <section class="transactions card card-anim">
-          <h3>Recent transactions</h3>
-          <ul id="txList" class="tx-list" aria-live="polite"></ul>
-          <div class="tx-actions">
-            <button id="addTx" class="btn small" disabled>Simulate tx</button>
-            <button id="clearTx" class="btn small muted" disabled>Clear</button>
-          </div>
-        </section>
+      <section class="transactions card card-anim">
+        <h3>Recent transactions</h3>
+        <ul id="txList" class="tx-list" aria-live="polite"></ul>
       </section>
+    </section>
 
-      <footer class="site-footer">
-        <small>© <span id="year"></span> Sand Box Investment Broker</small>
-      </footer>
-    </div>
-  </div>
+    <footer class="site-footer">
+      <small>© <span id="year"></span> Sand Box</small>
+    </footer>
+  </main>
 
-  <script src="js/dashboard.js" defer></script>
-  <script src="js/logout.js" defer></script>
-  <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+  <script src="/js/money.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/logout.js" defer></script>
+  <script src="/js/dashboard.js" defer></script>
 </body>
 </html>

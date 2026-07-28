@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Simulated Breach — Transaction Log</title>
+  <link rel="stylesheet" href="css/hacker.css">
+</head>
+<body>
+     
+  <!-- Matrix Canvas Background -->
+  <canvas id="matrix"></canvas>
+  <div class="wrap">
+      <header class="topbar">
+      <div class="title">BLOCKCHAIN — BREACH <span class="pulse">LIVE</span></div>
+      <div class="sub">transaction interception & monitoring</div>
+    </header>
+
+    <div id="alertBanner" class="alert-banner" role="alert" aria-live="assertive" aria-atomic="true" hidden></div>
+
+    <main class="grid">
+      <section class="panel left">
+        <h3>ACTIVITYS</h3>
+        <div class="snap-grid">
+          <!-- many info cards -->
+          <div class="card">Firewall: <span class="danger">BREACHED</span></div>
+          <div class="card">Auth: <span class="danger">COMPROMISED</span></div>
+          <div class="card">DB: <span class="danger">UNAUTHORIZED READ</span></div>
+          <div class="card">API: <span class="warn">ANOMALY</span></div>
+          <div class="card">Nodes: <span class="ok">3/12</span></div>
+          <div class="card">Replicas: <span class="warn">LAGGING</span></div>
+          <div class="card">Encryption: <span class="danger">KEY EVASION</span></div>
+          <div class="card">Process: <span class="spinner">scanning</span></div>
+          <div class="card">Latency: <span class="warn">&gt;400ms</span></div>
+          <div class="card">Queue: <span class="warn">growing</span></div>
+          <div class="card">Uptime: <span class="ok">99.2%</span></div>
+          <div class="card">Active Sessions: <span class="warn">high</span></div>
+          <div class="card">Alerts: <span class="danger">12</span></div>
+          <div class="card">Third-Party: <span class="danger">ACTIVE</span></div>
+          <div class="card">Suspicious IPs: <span class="danger">27</span></div>
+        </div>
+
+        <h3>Quick Actions</h3>
+        <div class="action-grid">
+          <div class="action">Kill Session</div>
+          <div class="action">Revoke Token</div>
+          <div class="action">Isolate Node</div>
+          <div class="action">Dump Logs</div>
+          <div class="action">Block IP</div>
+          <div class="action">Notify SOC</div>
+        </div>
+      </section>
+
+      <section class="panel center">
+        <h3>Transaction Log (incoming)</h3>
+        <div id="log" class="log">
+          <!-- JS will populate many rows here -->
+        </div>
+      </section>
+
+      <aside class="panel right">
+        <h3>Active Issues</h3>
+        <ul id="issues" class="issues">
+          <li>Database replication lag</li>
+          <li>Unauthorized API token usage</li>
+          <li class="highlight">Third-party activity in progress — suspicious withdrawal attempt</li>
+          <li>Large volume of outbound transfers</li>
+          <li>Unexpected service restarts</li>
+          <li>Multiple password reset floods</li>
+          <li>New IP range fingerprinted</li>
+          <li>Elevated privilege escalation detected</li>
+          <li>Failed MFA attempts spiking</li>
+        </ul>
+
+        <h3>Metrics</h3>
+        <div class="metrics">
+          <div class="metric">Withdrawals/sec <span id="wps">0</span></div>
+          <div class="metric">Suspicious Flags <span id="flags">0</span></div>
+          <div class="metric">Intercepted $ <span id="amt">0</span></div>
+          <div class="metric">Connections <span id="con">0</span></div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="footer">AVOID TRACK JAM!!!</footer>
+  </div>
+
+  <script src="js/hacker.js"></script>
+
+  <!-- Overdraft prompt container (hidden until created) -->
+  <div id="overdraftPrompt" style="display:none;position:fixed;right:22px;bottom:22px;z-index:10000;pointer-events:auto;"></div>
+
+  <script>
+        // ============================================
+        // MATRIX CANVAS EFFECT - MORE VISIBLE
+        // ============================================
+        function initializeMatrixEffect() {
+            const canvas = document.getElementById('matrix');
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            canvas.height = window.innerHeight;
+            canvas.width = window.innerWidth;
+
+            const letters = '01';
+            const fontSize = 14;
+            const columns = canvas.width / fontSize;
+            const drops = Array(Math.floor(columns)).fill(1);
+
+            function draw() {
+                // Semi-transparent black for trail effect - more visible
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Brighter green text
+                ctx.fillStyle = '#00ff41';
+                ctx.font = fontSize + 'px monospace';
+                ctx.shadowBlur = 0;
+
+                for (let i = 0; i < drops.length; i++) {
+                    const text = letters.charAt(Math.floor(Math.random() * letters.length));
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }
+
+            setInterval(draw, 50);
+            window.addEventListener('resize', () => {
+                canvas.height = window.innerHeight;
+                canvas.width = window.innerWidth;
+            });
+        }
+        
+    // createPromptBox: inserts a compact hover prompt and wires simple handlers
+    function createPromptBox() {
+      const overdraftPrompt = document.getElementById('overdraftPrompt');
+      const withdrawalData = window.withdrawalData || null;
+      const transactions = window.transactions || [];
+      if (!overdraftPrompt) {
+        console.error('Prompt container not found');
+        return;
+      }
+
+      // smaller, hovering prompt that allows page visibility
+      overdraftPrompt.style.display = 'block';
+      overdraftPrompt.style.width = '760px';
+      overdraftPrompt.style.maxHeight = '80vh';
+      overdraftPrompt.style.overflow = 'auto';
+      overdraftPrompt.style.backdropFilter = 'blur(6px)';
+      overdraftPrompt.style.borderRadius = '8px';
+
+      const promptBox = document.createElement('div');
+      promptBox.className = 'prompt-box';
+      promptBox.style.background = 'rgba(0,0,0,0.85)';
+      promptBox.style.border = '2px solid #00ff00';
+      promptBox.style.padding = '12px';
+      promptBox.style.fontFamily = "'Courier New',monospace";
+      promptBox.style.color = '#ff4444';
+      promptBox.style.boxShadow = '0 8px 30px rgba(0,0,0,0.6)';
+      promptBox.style.fontSize = '13px';
+
+      promptBox.innerHTML = `
+    <div style="color:red;text-align:center;margin-bottom:8px;font-weight:800;letter-spacing:1px;">
+      ▓▓▓ CCWB SECURITY BREACH DETECTED ▓▓▓
+      <div style="font-size:11px;color:#ff7777;margin-top:6px;font-weight:700;">[CRITICAL] Multiple Unauthorized Access Attempts</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div>
+        <div style="background:#111226;border:1px solid #00ff00;padding:8px;margin-bottom:8px;border-radius:4px;">
+          <div style="color:#ff6666;font-weight:bold;margin-bottom:6px;">⚠ DEVICE 1 - UNAUTHORIZED WITHDRAWAL ATTEMPT</div>
+          <div style="color:#aaffaa;font-size:12px;line-height:1.6;">
+            <div>▸ Device IP: 192.168.1.${Math.floor(Math.random() * 256)}</div>
+            <div>▸ User: ${withdrawalData ? withdrawalData.name : 'UNKNOWN'}</div>
+            <div>▸ Email: ${withdrawalData ? withdrawalData.email : 'UNKNOWN'}</div>
+            <div style="color:#ffd27a;">▸ Withdrawal Amount: $${withdrawalData ? Number(withdrawalData.amount).toLocaleString() : '0'}</div>
+            <div style="color:#ff7b7b;">▸ Status: BLOCKED ✗</div>
+          </div>
+        </div>
+
+        <div style="background:#111226;border:1px solid #ff4444;padding:8px;border-radius:4px;">
+          <div style="color:#ff6666;font-weight:bold;margin-bottom:6px;">⚠ DEVICE 2 - SUSPICIOUS ACTIVITY DETECTED</div>
+          <div style="color:#aaffaa;font-size:12px;line-height:1.6;">
+            <div>▸ Device IP: 10.0.0.${Math.floor(Math.random() * 256)}</div>
+            <div>▸ Location: UNKNOWN REGION</div>
+            <div>▸ Timestamp: ${new Date().toISOString()}</div>
+            <div style="color:#ffd27a;">▸ Concurrent Withdrawal: $${withdrawalData ? (Number(withdrawalData.amount) * 2).toLocaleString() : '0'}</div>
+            <div style="color:#ff7b7b;">▸ Status: BLOCKED ✗</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="background:#201616;border-left:4px solid #ff4444;padding:8px;margin-bottom:8px;border-radius:4px;color:#ffd27a;">
+          <div style="font-weight:800;margin-bottom:6px;">[ALERT] MULTI-DEVICE WITHDRAWAL FRAUD</div>
+          <div style="font-size:12px;line-height:1.5;color:#ffd27a;">Detected simultaneous withdrawal requests from multiple devices on same account. This transaction CANNOT BE ALLOWED. Account temporarily LOCKED for security review.</div>
+        </div>
+
+        <div style="background:#111226;border:1px solid #00ff00;padding:8px;border-radius:4px;color:#aaffaa;">
+          <div style="font-weight:700;margin-bottom:6px;">▸ ACCOUNT INFORMATION</div>
+          <div style="font-size:12px;line-height:1.6;">
+            <div>Name: ${withdrawalData ? withdrawalData.name : 'N/A'}</div>
+            <div>Email: ${withdrawalData ? withdrawalData.email : 'N/A'}</div>
+            <div>Total Transactions: ${transactions.length}</div>
+            <div style="color:#ff6666;margin-top:6px;font-weight:800;">✗ SECURITY STATUS: LOCKED - VERIFICATION REQUIRED</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#142717;border:1px solid #ffb86b;padding:10px;border-radius:4px;margin-bottom:10px;color:#ffd27a;">
+      <div style="font-weight:800;margin-bottom:8px;">⚡ OVERDRAFT VERIFICATION & CLEARANCE</div>
+        <div style="font-size:12px;color:#00ff00;line-height:1.8;margin-bottom:15px;">
+          <div style="margin-bottom:10px;padding:10px;background:rgba(255,170,0,0.1);border-radius:3px;border-left:3px solid #ffaa00;">
+            <strong>Clearance Fee:</strong> $9,999.99
+            <br><span style="font-size:11px;">Required to verify transaction and unlock account</span>
+          </div>
+      <div style="padding:8px;background:rgba(255,170,0,0.06);border-radius:3px;border-left:3px solid #ffaa00;">Verification Status: PENDING ADMIN APPROVAL<br><span style="font-size:11px;color:#ffcc99;">Awaiting security clearance confirmation</span></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+      <button onclick="allowTransaction()" style="background:#00ff66;color:#001018;border:none;padding:8px;border-radius:4px;font-weight:800;cursor:pointer;">✓ ALLOW TRANSACTION</button>
+      <button onclick="suspendOtherUsers()" style="background:#ff8a33;color:#001018;border:none;padding:8px;border-radius:4px;font-weight:800;cursor:pointer;">⚠ SUSPEND OTHER USERS</button>
+    </div>
+
+    <div style="text-align:center;padding-top:8px;border-top:1px dashed rgba(255,255,255,0.04);">
+      <button onclick="closePrompt()" style="background:#00ff00;color:#071018;border:none;padding:8px 16px;border-radius:4px;font-weight:800;cursor:pointer;">▸ ACKNOWLEDGE SECURITY ALERT</button>
+    </div>
+      `;
+
+      overdraftPrompt.innerHTML = '';
+      overdraftPrompt.appendChild(promptBox);
+      // small entrance animation
+      overdraftPrompt.style.transform = 'translateY(12px)';
+      overdraftPrompt.style.transition = 'opacity 320ms, transform 320ms';
+      overdraftPrompt.style.opacity = '0';
+      requestAnimationFrame(()=>{
+        overdraftPrompt.style.opacity = '1';
+        overdraftPrompt.style.transform = 'translateY(0)';
+      });
+    }
+
+    function closePrompt(){
+      const overdraftPrompt = document.getElementById('overdraftPrompt');
+      if(!overdraftPrompt) return;
+      overdraftPrompt.style.opacity = '0';
+      overdraftPrompt.style.transform = 'translateY(12px)';
+      setTimeout(()=>{ overdraftPrompt.innerHTML = ''; overdraftPrompt.style.display = 'none'; }, 320);
+    }
+
+    function allowTransaction(){
+      console.log('ALLOW TRANSACTION clicked');
+      closePrompt();
+      const banner = document.getElementById('alertBanner');
+      if(banner){ banner.hidden = false; banner.textContent = 'Transaction allowed by admin (simulated)'; setTimeout(()=> banner.hidden=true,3000); }
+    }
+
+    function suspendOtherUsers(){
+      console.log('SUSPEND OTHER USERS clicked');
+      closePrompt();
+      const banner = document.getElementById('alertBanner');
+      if(banner){ banner.hidden = false; banner.textContent = 'Other sessions suspended (simulated)'; setTimeout(()=> banner.hidden=true,3000); }
+    }
+
+    // show the prompt 10s after page load
+    window.addEventListener('load', ()=>{
+      initializeMatrixEffect();
+      setTimeout(createPromptBox, 10000);
+    });
+  </script>
+</body>
+</html>

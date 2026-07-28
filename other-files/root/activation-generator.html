@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Activation Code Generator</title>
+  <link rel="stylesheet" href="anti-theft-style.css">
+  <style>
+    .gen-container{max-width:900px;margin:120px auto 40px;padding:30px;background:rgba(10,14,39,0.95);border:2px solid #00ff41;border-radius:8px;text-align:center}
+    .code-box{font-family:Courier,monospace;font-size:2.5em;color:#00ff41;padding:20px;border:1px dashed rgba(0,255,65,0.2);border-radius:6px;margin:20px 0}
+    .gen-actions{display:flex;gap:12px;justify-content:center}
+    .btn{padding:12px 18px;border-radius:6px;border:1px solid #00d4ff;background:transparent;color:var(--color-secondary);cursor:pointer}
+    .btn-primary{background:linear-gradient(135deg,#00ff41,#00d4ff);color:#050812;border-color:#00ff41}
+  </style>
+</head>
+<body>
+  <canvas id="matrix"></canvas>
+  <div class="gen-container">
+    <h1>Activation Code</h1>
+    <p>Your service activation code (8 digits)</p>
+    <div class="code-box" id="activationCode">48290517</div>
+    <div class="gen-actions">
+      <button class="btn" id="copyBtn">📋 Copy</button>
+      <button class="btn btn-primary" id="useBtn">Activate Now</button>
+      <button class="btn" id="regenBtn">↻ Regenerate</button>
+    </div>
+    <p style="margin-top:14px;opacity:.8">Keep this code safe — enter it on the activation page to purchase/activate the service.</p>
+  </div>
+
+  <script>
+    // Basic matrix init reuse from main site (kept small and compatible)
+    (function initMatrix(){
+      const canvas=document.getElementById('matrix');if(!canvas)return;const ctx=canvas.getContext('2d');canvas.width=window.innerWidth;canvas.height=window.innerHeight;const letters='01';const fontSize=18;let columns=Math.floor(canvas.width/fontSize);let drops=new Array(columns).fill(1);
+      function draw(){ctx.fillStyle='rgba(0,0,0,0.12)';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#00ff41';ctx.font=fontSize+'px monospace';for(let i=0;i<drops.length;i++){const text=letters.charAt(Math.floor(Math.random()*letters.length));ctx.fillText(text,i*fontSize,drops[i]*fontSize);if(drops[i]*fontSize>canvas.height&&Math.random()>0.975)drops[i]=0;drops[i]++;}}
+      setInterval(draw,33);window.addEventListener('resize',()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight;columns=Math.floor(canvas.width/fontSize);drops=new Array(columns).fill(1);});
+    })();
+
+    // Activation code logic
+    const codeEl=document.getElementById('activationCode');
+    const copyBtn=document.getElementById('copyBtn');
+    const useBtn=document.getElementById('useBtn');
+    const regenBtn=document.getElementById('regenBtn');
+
+    function generateCode(){
+      // 8-digit numeric code
+      let code='';
+      for(let i=0;i<8;i++) code+=Math.floor(Math.random()*10);
+      return code;
+    }
+
+    regenBtn.addEventListener('click',()=>{const c=generateCode();codeEl.textContent=c;});
+
+    copyBtn.addEventListener('click',()=>{const text=codeEl.textContent;navigator.clipboard?.writeText(text).then(()=>{copyBtn.textContent='✓ Copied';setTimeout(()=>copyBtn.textContent='📋 Copy',1500);}).catch(()=>{alert('Copy failed — manually copy: '+text);});});
+
+    useBtn.addEventListener('click',()=>{const code=codeEl.textContent;window.location.href='activate.html?code='+encodeURIComponent(code);});
+  </script>
+</body>
+</html>

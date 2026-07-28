@@ -1,4 +1,3 @@
-// client side validation + POST to /api/register
 (function () {
   'use strict';
 
@@ -6,13 +5,17 @@
   const msg = document.getElementById('message');
 
   function show(type, text) {
+    if (!msg) return;
     msg.className = 'msg ' + (type === 'success' ? 'success' : 'error');
     msg.textContent = text;
+    msg.style.display = 'block';
   }
+
+  if (!form) return;
 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    msg.style.display = 'none';
+    if (msg) msg.style.display = 'none';
 
     const name = form.name.value.trim();
     const email = form.email.value.trim();
@@ -33,28 +36,59 @@
     }
 
     const btn = form.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = 'Registering...';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Creating account…';
+    }
 
     try {
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, confirm })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        show('error', data && data.error ? data.error : 'Registration failed');
+      let data;
+      if (window.auth && typeof auth.register === 'function') {
+        data = await auth.register(name, email, password, confirm);
       } else {
-        show('success', 'Registration successful. You can now sign in.');
-        form.reset();
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ name, email, password, confirm })
+        });
+        data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error((data && data.error) || 'Registration failed');
       }
+
+      // Prefer token returned from register (single step)
+      if (data.token && window.auth) {
+        auth.setToken(data.token);
+        if (data.user) auth.setUser(data.user);
+      } else if (window.auth && typeof auth.login === 'function') {
+        // Fallback: login after register if API is older
+        await auth.login(email, password);
+      } else {
+        throw new Error('Could not start session after registration');
+      }
+
+      const start = data.startingBalance != null ? data.startingBalance : 25000;
+      const startLabel =
+        window.money && money.format
+          ? money.format(start)
+          : '$' + Number(start).toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            });
+
+      show('success', 'Account created (balance ' + startLabel + '). Opening dashboard…');
+
+      // Hard navigate after token is stored
+      window.setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 400);
     } catch (err) {
-      show('error', 'Network error. Try again.');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Register';
+      console.error('Register failed', err);
+      show('error', (err && err.message) || 'Registration failed. Try again.');
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Register';
+      }
     }
   });
 })();

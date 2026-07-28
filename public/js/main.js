@@ -80,84 +80,12 @@
     items.forEach((el) => io.observe(el));
   }
 
-  // Mobile nav toggle behavior
-  function enableMobileMenu() {
-    const toggle = document.querySelector('.nav-toggle');
-    const nav = document.getElementById('main-nav');
-    if (!toggle || !nav) return;
-
-    function setExpanded(value) {
-      toggle.setAttribute('aria-expanded', value ? 'true' : 'false');
-      nav.classList.toggle('open', !!value);
-    }
-
-    toggle.addEventListener('click', (e) => {
-      const expanded = toggle.getAttribute('aria-expanded') === 'true';
-      setExpanded(!expanded);
-    });
-
-    // Close menu on Escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') setExpanded(false);
-    });
-
-    // Close when clicking outside nav (on mobile)
-    document.addEventListener('click', (e) => {
-      if (!nav.classList.contains('open')) return;
-      const withinNav = nav.contains(e.target) || toggle.contains(e.target);
-      if (!withinNav) setExpanded(false);
-    });
-
-    // Close after link click
-    nav.querySelectorAll('a').forEach((a) =>
-      a.addEventListener('click', () => setExpanded(false))
-    );
-  }
-
-  // Optional: small "back to top" button
-  function enableBackToTop() {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'back-to-top';
-    btn.title = 'Back to top';
-    btn.textContent = '↑';
-    Object.assign(btn.style, {
-      position: 'fixed',
-      right: '18px',
-      bottom: '18px',
-      width: '44px',
-      height: '44px',
-      borderRadius: '8px',
-      border: 'none',
-      background: 'linear-gradient(90deg,#4f46e5,#06b6d4)',
-      color: '#fff',
-      cursor: 'pointer',
-      display: 'none',
-      zIndex: 1000,
-    });
-    document.body.appendChild(btn);
-
-    window.addEventListener(
-      'scroll',
-      () => {
-        btn.style.display = window.scrollY > 400 ? 'block' : 'none';
-      },
-      { passive: true }
-    );
-
-    btn.addEventListener('click', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-  }
-
-  // Initialize everything
+  // Initialize everything (nav shell is handled by nav.js)
   function init() {
     setYear();
     enableSmoothScroll();
     enableScrollSpy();
     enableRevealOnScroll();
-    enableBackToTop();
-    enableMobileMenu();
   }
 
   // Run init on DOM ready

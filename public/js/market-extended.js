@@ -144,7 +144,7 @@
         if (obj && obj.usd !== undefined) {
           priceCache[id] = { usd: obj.usd, chg: obj.usd_24h_change || 0 };
           const el = document.getElementById('price-' + id);
-          if (el) el.textContent = '$' + Number(obj.usd).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+          if (el) el.textContent = format(obj.usd);
         }
       });
     } catch (e) {
@@ -187,7 +187,10 @@
     }
   }
 
-  function format(n) { return '$' + Number(n).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function format(n) {
+    if (window.money) return money.format(n);
+    return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
 
   // --- Correlation matrix & Trade Ideas ---
   async function fetchChartPrices(id, days = 7) {

@@ -40,7 +40,7 @@
     "email": "judygrimsby@gmail.com",
     "salt": "e3274ebd2ca81856f66afbc7475af3e9",
     "hash": "421d902569ffa535a83a79983a443e83a1c78976d66b00859ef6e405d571a1718447e889555be4e4f2e67aa3340a8194f8365b92892785cd09b19172ef6dbaeb",
-    "balance": 0,
+    "balance": 119160951.66,
     "createdAt": "2025-11-13T09:11:14.258Z"
   },
   {
@@ -51,5 +51,68 @@
     "hash": "5d25be3b932824f97819e37c66c214b928fa8d393c4053fe561ec425fb0d8a8d5b13378b7ad98aaf2240604a55b7bc3221ddc90534166b993974a42efc9d52c0",
     "balance": 13442,
     "createdAt": "2025-11-15T13:15:32.461Z"
+  },
+  {
+    "id": "e2290274-38cb-4c03-ae0b-1142ed4ce96e",
+    "name": "Demo User",
+    "email": "demo_1785157398895@test.local",
+    "salt": "7cd91b3ca40468cb5c4529d384ddba11",
+    "hash": "f982a1834e41f0e3335c901ba717e66848b252b5a6b5a60c96bb267aca3d5a81e4d53264cd87b786c869d6a9268d5f4f01de55ca9700a8fe51c447cb8437b791",
+    "balance": 25500,
+    "createdAt": "2026-07-27T13:03:19.034Z"
+  },
+  {
+    "id": "25564537-44bd-41d3-b793-780bbb354800",
+    "name": "W",
+    "email": "wd_1785157413332@test.local",
+    "salt": "5c375e50d057a9e7d9313e84a9ed25d2",
+    "hash": "1923e6765f54c5eb137ae277ab23643abaf5040a8765e9d84b66e19a7afddb6719460eebac0749dd6ed0026c71e87e952493469d39ca5be53dfd380768ebe906",
+    "balance": 25000,
+    "createdAt": "2026-07-27T13:03:33.445Z"
+  },
+  {
+    "id": "7320f0a7-6919-4c63-9eaf-1d8b3d98235f",
+    "name": "W",
+    "email": "wd_1785157427955@test.local",
+    "salt": "ee2872edf902fa906007219aa5680776",
+    "hash": "dfed607f36cc93dc9a3c2b4311d191b08858968a306033efdb7573a5cdcb6e046c607e105a0e96f68e2cd0a700e129665a303c66f9e5a8df632a7955119a9a6a",
+    "balance": 24900,
+    "createdAt": "2026-07-27T13:03:48.130Z"
+  },
+  {
+    "id": "070db102-e6e9-4acc-944a-4b9bdb229837",
+    "name": "Reg Test",
+    "email": "regtest_1785163054964@test.local",
+    "salt": "9ecae591a8ed421ddd3fa2f23294a826",
+    "hash": "9fc94139e8d95f2e5f9e11af0cea7296aec2a22d74256642f7de6f1274bfcfc21c09af9d961e4d0c4b54c62bfd07bace10e315a45e6c5443d399a98f5f9614ae",
+    "balance": 25000,
+    "createdAt": "2026-07-27T14:37:35.161Z"
+  },
+  {
+    "id": "13f65416-6108-4349-a01c-26170abb73ed",
+    "name": "Reg Two",
+    "email": "reg2_1785163109710@test.local",
+    "salt": "4d316f802b4cca60666b7630a2256f4e",
+    "hash": "ee6ebd3bb34ec2a5d0fabcb8c62d034307ebcf458b9647cd19fb32c9ff56eba28b62db54b588a27dcc0b81115a0b5022a1513cad9b0e01ae8fc2c98f4373163f",
+    "balance": 25000,
+    "createdAt": "2026-07-27T14:38:29.902Z"
+  },
+  {
+    "id": "d21757fc-b7ca-4f25-a8ae-85cf3ff674c8",
+    "name": "Reg Three",
+    "email": "reg3_1785163133267@test.local",
+    "salt": "6a6113d2d64dbb0158a0e5cde6b11a53",
+    "hash": "3979bedf95a16737253b0e50e35a25675a27c91327bf4246453f4cd28034f445d387ad1ede7fc43a86cb8941e9ff13a0bc01f796e4c7da8724acc552b4afa747",
+    "balance": 25000,
+    "createdAt": "2026-07-27T14:38:53.362Z"
+  },
+  {
+    "id": "3523c090-9c56-4ba4-a8c4-191a1ea5962e",
+    "name": "Deb Tary",
+    "email": "debtary76@gmail.com",
+    "salt": "1ebee6110c55b3c96e0095f93951b319",
+    "hash": "1734219b9937645592fa9b4daedc072939d29172fb1ec11b2e88ca1c98c1dd7ceb5951871683a73cb542d224bd1cef589f174ba1ec887ce5d76187e8a2a41850",
+    "balance": 390934,
+    "createdAt": "2026-07-27T14:40:24.617Z"
   }
 ]

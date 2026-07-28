@@ -1,18 +1,13 @@
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 
-// JWT secret - in production, use a strong secret from environment variable
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
+// Stable demo secret when env is unset (set JWT_SECRET in real production)
+const JWT_SECRET = process.env.JWT_SECRET || 'crome-broker-demo-secret-change-me';
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '7d';
 const REFRESH_TOKEN_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || '30d';
 
-// In-memory token blacklist (for logout)
-// In production, use Redis or database
+// In-memory token blacklist (demo-only; use Redis/DB in production)
 const tokenBlacklist = new Set();
 
-/**
- * Generate JWT access token
- */
 function generateAccessToken(user) {
   return jwt.sign(
     {
@@ -26,9 +21,6 @@ function generateAccessToken(user) {
   );
 }
 
-/**
- * Generate JWT refresh token
- */
 function generateRefreshToken(user) {
   return jwt.sign(
     {
@@ -41,89 +33,66 @@ function generateRefreshToken(user) {
   );
 }
 
-/**
- * Verify and decode JWT token
- */
 function verifyToken(token) {
   try {
-    // Check if token is blacklisted
-    if (tokenBlacklist.has(token)) {
-      return null;
-    }
+    if (tokenBlacklist.has(token)) return null;
     return jwt.verify(token, JWT_SECRET);
   } catch (err) {
     return null;
   }
 }
 
-/**
- * Blacklist a token (for logout)
- */
 function blacklistToken(token) {
   tokenBlacklist.add(token);
-  // Clean up old tokens after their expiry (simple cleanup)
   setTimeout(() => tokenBlacklist.delete(token), 30 * 24 * 60 * 60 * 1000);
 }
 
-/**
- * Extract token from request (from cookie or Authorization header)
- */
 function extractToken(req) {
-  // Try cookie first
-  if (req.cookies && req.cookies.token) {
-    return req.cookies.token;
-  }
-  
-  // Try Authorization header
+  if (req.cookies && req.cookies.token) return req.cookies.token;
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
-  
   return null;
 }
 
-/**
- * Middleware to require authentication
- */
+function setAuthCookie(res, token) {
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+}
+
 function requireAuth(req, res, next) {
   const token = extractToken(req);
-  
+
   if (!token) {
-    // For API routes, return JSON error
-    if (req.path.startsWith('/api/')) {
+    if (req.path.startsWith('/api/') || (req.originalUrl || '').startsWith('/api/')) {
       return res.status(401).json({ error: 'Authentication required' });
     }
-    // For page routes, redirect to login
-    return res.redirect('/login');
+    return res.redirect('/login?redirect=' + encodeURIComponent(req.originalUrl || '/dashboard'));
   }
-  
+
   const decoded = verifyToken(token);
   if (!decoded || decoded.type !== 'access') {
-    // For API routes, return JSON error
-    if (req.path.startsWith('/api/')) {
+    if (req.path.startsWith('/api/') || (req.originalUrl || '').startsWith('/api/')) {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
-    // For page routes, redirect to login
-    return res.redirect('/login');
+    return res.redirect('/login?redirect=' + encodeURIComponent(req.originalUrl || '/dashboard'));
   }
-  
-  // Attach user info to request
+
   req.user = {
     id: decoded.id,
     email: decoded.email,
     name: decoded.name
   };
-  
   next();
 }
 
-/**
- * Middleware for optional authentication (sets req.user if token is valid)
- */
 function optionalAuth(req, res, next) {
   const token = extractToken(req);
-  
   if (token) {
     const decoded = verifyToken(token);
     if (decoded && decoded.type === 'access') {
@@ -134,7 +103,6 @@ function optionalAuth(req, res, next) {
       };
     }
   }
-  
   next();
 }
 
@@ -144,6 +112,7 @@ module.exports = {
   verifyToken,
   blacklistToken,
   extractToken,
+  setAuthCookie,
   requireAuth,
   optionalAuth,
   JWT_SECRET

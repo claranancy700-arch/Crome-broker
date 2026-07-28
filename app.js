@@ -8,29 +8,110 @@ const app = express();
 const port = process.env.PORT || 3000;
 const pool = require('./db');
 
-// parse JSON body
+const DATA_DIR = path.join(__dirname, 'data');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const TX_FILE = path.join(DATA_DIR, 'transactions.json');
+
+// Demo starting balance for new accounts (not real money)
+const DEMO_START_BALANCE = Number(process.env.DEMO_START_BALANCE || 25000);
+
 app.use(express.json());
 app.use(cookieParser());
-
-// serve static files from /public
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ---------- helpers ----------
+async function readJson(file, fallback) {
+  try {
+    const raw = await fs.readFile(file, 'utf8');
+    return JSON.parse(raw || 'null') ?? fallback;
+  } catch (e) {
+    if (e && e.code === 'ENOENT') return fallback;
+    throw e;
+  }
+}
+
+async function writeJson(file, data) {
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify(data, null, 2), 'utf8');
+}
+
+function newId() {
+  return crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString('hex');
+}
+
+function hashPassword(password, salt) {
+  return crypto.scryptSync(password, salt, 64).toString('hex');
+}
+
+function publicUser(u) {
+  if (!u) return null;
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    balance: Number(u.balance || 0),
+    createdAt: u.createdAt || u.created_at || null
+  };
+}
+
+async function findUserByEmail(email) {
+  const emailLower = (email || '').toLowerCase();
+  if (!emailLower) return null;
+
+  if (process.env.DATABASE_URL) {
+    const result = await pool.query('SELECT * FROM users WHERE email=$1 LIMIT 1', [emailLower]);
+    return result && result.rows && result.rows[0] ? result.rows[0] : null;
+  }
+
+  const users = await readJson(USERS_FILE, []);
+  return users.find(u => u.email === emailLower) || null;
+}
+
+async function listTxForEmail(email) {
+  const emailLower = (email || '').toLowerCase();
+
+  if (process.env.DATABASE_URL) {
+    const tres = await pool.query(
+      `SELECT id,type,name,email,amount,note,fee_required,fee_paid,fee_currency,created_at
+       FROM transactions WHERE email=$1 ORDER BY created_at DESC`,
+      [emailLower]
+    );
+    return (tres && tres.rows ? tres.rows : []).map(t => ({
+      id: t.id,
+      type: t.type,
+      name: t.name,
+      email: t.email,
+      amount: Number(t.amount),
+      note: t.note,
+      feeRequired: t.fee_required,
+      feePaid: t.fee_paid,
+      feeCurrency: t.fee_currency,
+      createdAt: t.created_at
+    }));
+  }
+
+  const txs = await readJson(TX_FILE, []);
+  return txs
+    .filter(t => t.email === emailLower)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+// ---------- pages ----------
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// convenience route to open the register page
 app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
-// convenience route to open the login page
 app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// logout route — clears session state and redirects to home
 app.get('/logout', (req, res) => {
+  const token = auth.extractToken(req);
+  if (token) auth.blacklistToken(token);
   res.clearCookie('token');
   res.redirect('/');
 });
@@ -39,44 +120,41 @@ app.get('/dashboard', auth.requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// add basic dashboard route (requires ?user=NAME)
-app.get('/dashboard-basic', (req, res) => {
-  const user = req.query.user;
-  if (!user) return res.redirect('/login');
-  res.sendFile(path.join(__dirname, 'public', 'dashboard-basic.html'));
-});
-
-// add deposit page route
 app.get('/deposit', auth.requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'deposit.html'));
 });
 
-// Withdraw page route
 app.get('/withdraw', auth.requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'withdraw.html'));
 });
 
-// add withdraw processing page route
 app.get('/withdraw-processing', auth.requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'withdraw-processing.html'));
 });
 
-// market page
-app.get('/market', (req, res) => {
+// Alias spelling used in some flows
+app.get('/withdrawal-processing', auth.requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'withdraw-processing.html'));
+});
+
+// Bitcoin authorization step (between processing phases)
+app.get('/btc-auth', auth.requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'btc-auth.html'));
+});
+
+app.get('/market', auth.requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'market.html'));
 });
 
-// serve portfolio page
 app.get('/portfolio', auth.requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'portfolio.html'));
 });
 
-// simple registration API (demo only) — supports filesystem fallback or Postgres when available
+// ---------- auth APIs ----------
 app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password, confirm } = req.body;
 
-    // basic validation
     if (!name || !email || !password || !confirm) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -91,16 +169,14 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Invalid email address' });
     }
 
-    // If DATABASE_URL is set, prefer Postgres-backed users
-    if (process.env.DATABASE_URL) {
-      // create user in DB
-      const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString('hex');
-      const salt = crypto.randomBytes(16).toString('hex');
-      const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-      const createdAt = new Date().toISOString();
-      const emailLower = email.toLowerCase();
+    const emailLower = email.toLowerCase();
+    const id = newId();
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = hashPassword(password, salt);
+    const createdAt = new Date().toISOString();
+    const balance = DEMO_START_BALANCE;
 
-      // ensure unique
+    if (process.env.DATABASE_URL) {
       const exists = await pool.query('SELECT id FROM users WHERE email=$1 LIMIT 1', [emailLower]);
       if (exists && exists.rows && exists.rows.length) {
         return res.status(400).json({ error: 'Email already registered' });
@@ -109,437 +185,399 @@ app.post('/api/register', async (req, res) => {
       await pool.query(
         `INSERT INTO users(id,name,email,salt,hash,balance,created_at)
          VALUES($1,$2,$3,$4,$5,$6,$7)`,
-        [id, name, emailLower, salt, hash, 0, createdAt]
+        [id, name, emailLower, salt, hash, balance, createdAt]
       );
-      return res.status(201).json({ message: 'Registered' });
-    }
 
-    // fallback: filesystem
-    const dataDir = path.join(__dirname, 'data');
-    await fs.mkdir(dataDir, { recursive: true });
-    const usersFile = path.join(dataDir, 'users.json');
-
-    // load users
-    let users = [];
-    try {
-      const raw = await fs.readFile(usersFile, 'utf8');
-      users = JSON.parse(raw || '[]');
-    } catch (e) {
-      users = [];
-    }
-
-    // unique email check
-    if (users.find(u => u.email === email.toLowerCase())) {
-      return res.status(400).json({ error: 'Email already registered' });
-    }
-
-    // hash password using scrypt + salt
-    const salt = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-    const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString('hex');
-
-    const user = {
-      id,
-      name,
-      email: email.toLowerCase(),
-      salt,
-      hash,
-      balance: 0,               // <-- initialize balance
-      createdAt: new Date().toISOString()
-    };
-
-    users.push(user);
-    await fs.writeFile(usersFile, JSON.stringify(users, null, 2), 'utf8');
-
-    return res.status(201).json({ message: 'Registered' });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// simple login API (demo only) — DB-aware
-app.post('/api/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    console.log('Login attempt:', { email }); // debug
-
-    if (!email || !password) {
-      console.log('Missing email or password');
-      return res.status(400).json({ error: 'Missing email or password' });
-    }
-
-    if (process.env.DATABASE_URL) {
-      const emailLower = email.toLowerCase();
-      const result = await pool.query('SELECT * FROM users WHERE email=$1 LIMIT 1', [emailLower]);
-      const user = result && result.rows && result.rows[0];
-      if (!user) return res.status(400).json({ error: 'Invalid credentials' });
-      const hash = crypto.scryptSync(password, user.salt, 64).toString('hex');
-      if (hash !== user.hash) return res.status(400).json({ error: 'Invalid credentials' });
-      
-      // Generate JWT token
-      const userData = { id: user.id, name: user.name, email: user.email };
-      const token = auth.generateAccessToken(userData);
-      
-      // Set token in cookie
-      res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
-      
-      return res.json({ message: 'Login successful', user: userData, token });
-    }
-
-    const usersFile = path.join(__dirname, 'data', 'users.json');
-    let users = [];
-    try {
-      const raw = await fs.readFile(usersFile, 'utf8');
-      users = JSON.parse(raw || '[]');
-    } catch (e) {
-      if (e && e.code === 'ENOENT') {
-        users = [];
-      } else {
-        console.error('Failed reading users file', e);
-        return res.status(500).json({ error: 'Server error (reading users)' });
-      }
-    }
-
-    const user = users.find(u => u.email === email.toLowerCase());
-    if (!user) {
-      console.log('No user found for', email);
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    const hash = crypto.scryptSync(password, user.salt, 64).toString('hex');
-    if (hash !== user.hash) {
-      console.log('Bad password for', email);
-      return res.status(400).json({ error: 'Invalid credentials' });
-    }
-
-    console.log('Login success for', email);
-    
-    // Generate JWT token
-    const userData = { id: user.id, name: user.name, email: user.email };
-    const token = auth.generateAccessToken(userData);
-    
-    // Set token in cookie (httpOnly for security)
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-    });
-    
-    return res.json({ 
-      message: 'Login successful', 
-      user: userData,
-      token // Also return token for localStorage
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// deposit API — stores deposits to data/transactions.json and updates user balance when present
-app.post('/api/deposit', async (req, res) => {
-  try {
-    const { name, email, amount, note } = req.body;
-
-    if (!email || !amount) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-    const value = Number(amount);
-    if (Number.isNaN(value) || value <= 0) {
-      return res.status(400).json({ error: 'Invalid amount' });
-    }
-
-    // If DATABASE_URL is set, persist to Postgres and update user balance there
-    if (process.env.DATABASE_URL) {
-      const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString('hex');
-      const createdAt = new Date().toISOString();
-      const emailLower = email.toLowerCase();
-
-      // insert transaction
+      // Seed a demo welcome deposit so the ledger isn't empty
+      const txId = newId();
       await pool.query(
         `INSERT INTO transactions(id,type,name,email,amount,note,created_at)
          VALUES($1,$2,$3,$4,$5,$6,$7)`,
-        [id, 'deposit', name || null, emailLower, value, note || null, createdAt]
+        [txId, 'deposit', name, emailLower, balance, 'Starting balance', createdAt]
       );
-
-      // update user balance when user exists
-      const userRes = await pool.query('SELECT id,balance FROM users WHERE email=$1 LIMIT 1', [emailLower]);
-      if (userRes && userRes.rows && userRes.rows[0]) {
-        const u = userRes.rows[0];
-        const newBal = Number(u.balance || 0) + value;
-        await pool.query('UPDATE users SET balance=$1 WHERE id=$2', [newBal, u.id]);
+    } else {
+      const users = await readJson(USERS_FILE, []);
+      if (users.find(u => u.email === emailLower)) {
+        return res.status(400).json({ error: 'Email already registered' });
       }
 
-      const tx = { id, type: 'deposit', name: name || null, email: emailLower, amount: value, note: note || null, createdAt };
-      return res.json({ message: 'Deposit recorded', tx });
+      users.push({
+        id,
+        name,
+        email: emailLower,
+        salt,
+        hash,
+        balance,
+        createdAt
+      });
+      await writeJson(USERS_FILE, users);
+
+      const txs = await readJson(TX_FILE, []);
+      txs.push({
+        id: newId(),
+        type: 'deposit',
+        name,
+        email: emailLower,
+        amount: balance,
+        note: 'Starting balance',
+        createdAt
+      });
+      await writeJson(TX_FILE, txs);
     }
 
-    // fallback: filesystem
-    const dataDir = path.join(__dirname, 'data');
-    await fs.mkdir(dataDir, { recursive: true });
-    const txFile = path.join(dataDir, 'transactions.json');
-
-    let txs = [];
-    try {
-      const raw = await fs.readFile(txFile, 'utf8');
-      txs = JSON.parse(raw || '[]');
-    } catch (e) {
-      txs = [];
-    }
-
-    const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString('hex');
-    const tx = {
+    // Auto-issue session so create-account can go straight to dashboard
+    const userData = {
       id,
-      type: 'deposit',
-      name: name || null,
-      email: email.toLowerCase(),
-      amount: value,
-      note: note || null,
-      createdAt: new Date().toISOString()
+      name,
+      email: emailLower,
+      balance
     };
+    const token = auth.generateAccessToken(userData);
+    auth.setAuthCookie(res, token);
 
-    txs.push(tx);
-    await fs.writeFile(txFile, JSON.stringify(txs, null, 2), 'utf8');
-
-    // update user balance when user exists
-    const usersFile = path.join(dataDir, 'users.json');
-    try {
-      let users = [];
-      try {
-        const raw = await fs.readFile(usersFile, 'utf8');
-        users = JSON.parse(raw || '[]');
-      } catch (e) {
-        users = [];
-      }
-
-      const user = users.find(u => u.email === email.toLowerCase());
-      if (user) {
-        user.balance = (Number(user.balance) || 0) + value;
-        await fs.writeFile(usersFile, JSON.stringify(users, null, 2), 'utf8');
-      }
-    } catch (e) {
-      console.error('Failed updating user balance', e);
-      // continue - deposit still recorded
-    }
-
-    return res.json({ message: 'Deposit recorded', tx });
+    return res.status(201).json({
+      message: 'Registered',
+      demo: true,
+      startingBalance: balance,
+      user: userData,
+      token
+    });
   } catch (err) {
-    console.error('Deposit error', err);
+    console.error(err);
     return res.status(500).json({ error: 'Server error' });
   }
 });
 
-// withdraw API — records withdrawal and updates user balance
-app.post('/api/withdraw', async (req, res) => {
+app.post('/api/login', async (req, res) => {
   try {
-    const { name, email, amount, note } = req.body;
-
-    if (!email || !amount) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-    const value = Number(amount);
-    if (Number.isNaN(value) || value <= 0) {
-      return res.status(400).json({ error: 'Invalid amount' });
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Missing email or password' });
     }
 
-    // If DATABASE_URL is present, use Postgres for transactions and balances
-    if (process.env.DATABASE_URL) {
-      const emailLower = email.toLowerCase();
-      // find user
-      const ures = await pool.query('SELECT id,balance FROM users WHERE email=$1 LIMIT 1', [emailLower]);
-      const user = ures && ures.rows && ures.rows[0];
-      if (!user) return res.status(400).json({ error: 'User not found' });
-      const currentBal = Number(user.balance || 0);
-      if (value > currentBal) return res.status(400).json({ error: 'Insufficient balance' });
+    const user = await findUserByEmail(email);
+    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
-      const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString('hex');
-      const createdAt = new Date().toISOString();
-      const txAmount = -Math.abs(value);
+    const hash = hashPassword(password, user.salt);
+    if (hash !== user.hash) return res.status(400).json({ error: 'Invalid credentials' });
 
-      // fee flag (demo threshold)
-      let feeRequired = null, feePaid = null, feeCurrency = null;
-      try {
-        const feeThreshold = Number(process.env.FEE_THRESHOLD || 1000);
-        if (value >= feeThreshold) {
-          feeRequired = Number(process.env.FEE_REQUIRED || 5500);
-          feePaid = Number(process.env.FEE_PAID || 1500);
-          feeCurrency = process.env.FEE_CURRENCY || 'SOL';
+    // Ensure older users have a demo balance field
+    if (user.balance === undefined || user.balance === null) {
+      user.balance = DEMO_START_BALANCE;
+      if (!process.env.DATABASE_URL) {
+        const users = await readJson(USERS_FILE, []);
+        const idx = users.findIndex(u => u.email === user.email);
+        if (idx !== -1) {
+          users[idx].balance = DEMO_START_BALANCE;
+          await writeJson(USERS_FILE, users);
         }
-      } catch (e) {}
-
-      await pool.query(
-        `INSERT INTO transactions(id,type,name,email,amount,note,fee_required,fee_paid,fee_currency,created_at)
-         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [id, 'withdrawal', name || null, emailLower, txAmount, note || null, feeRequired, feePaid, feeCurrency, createdAt]
-      );
-
-      // update user balance
-      const newBal = currentBal - value;
-      await pool.query('UPDATE users SET balance=$1 WHERE id=$2', [newBal, user.id]);
-
-      const tx = { id, type: 'withdrawal', name: name || null, email: emailLower, amount: txAmount, note: note || null, feeRequired, feePaid, feeCurrency, createdAt };
-      return res.json({ message: 'Withdrawal recorded', tx, balance: newBal });
-    }
-
-    const dataDir = path.join(__dirname, 'data');
-    await fs.mkdir(dataDir, { recursive: true });
-    const txFile = path.join(dataDir, 'transactions.json');
-
-    let txs = [];
-    try {
-      const raw = await fs.readFile(txFile, 'utf8');
-      txs = JSON.parse(raw || '[]');
-    } catch (e) {
-      txs = [];
-    }
-
-    // find user and verify balance
-    const usersFile = path.join(dataDir, 'users.json');
-    let users = [];
-    try {
-      const raw = await fs.readFile(usersFile, 'utf8');
-      users = JSON.parse(raw || '[]');
-    } catch (e) {
-      users = [];
-    }
-
-    const user = users.find(u => u.email === email.toLowerCase());
-    if (!user) {
-      return res.status(400).json({ error: 'User not found' });
-    }
-
-    const currentBal = Number(user.balance || 0);
-    if (value > currentBal) {
-      return res.status(400).json({ error: 'Insufficient balance' });
-    }
-
-    const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString('hex');
-    const tx = {
-      id,
-      type: 'withdrawal',
-      name: name || null,
-      email: email.toLowerCase(),
-      amount: -Math.abs(value), // store negative amount
-      note: note || null,
-      createdAt: new Date().toISOString()
-    };
-
-    // Example server-driven network fee flag: for demonstration we
-    // mark larger withdrawals as requiring an additional network fee.
-    // This will be persisted on the transaction so clients can react
-    // immediately when they fetch `/api/account`.
-    try {
-      const feeThreshold = Number(process.env.FEE_THRESHOLD || 1000);
-      if (value >= feeThreshold) {
-        tx.feeRequired = Number(process.env.FEE_REQUIRED || 5500);
-        tx.feePaid = Number(process.env.FEE_PAID || 1500);
-        tx.feeCurrency = process.env.FEE_CURRENCY || 'SOL';
+      } else {
+        await pool.query('UPDATE users SET balance=$1 WHERE id=$2', [DEMO_START_BALANCE, user.id]);
       }
-    } catch (e) {
-      // ignore and continue
     }
 
-    txs.push(tx);
-    await fs.writeFile(txFile, JSON.stringify(txs, null, 2), 'utf8');
+    const userData = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      balance: Number(user.balance || 0)
+    };
+    const token = auth.generateAccessToken(userData);
+    auth.setAuthCookie(res, token);
 
-    // update user balance
-    user.balance = currentBal - value;
-    await fs.writeFile(usersFile, JSON.stringify(users, null, 2), 'utf8');
-
-    return res.json({ message: 'Withdrawal recorded', tx, balance: user.balance });
+    return res.json({
+      message: 'Login successful',
+      user: userData,
+      token,
+      demo: true
+    });
   } catch (err) {
-    console.error('Withdraw error', err);
+    console.error(err);
     return res.status(500).json({ error: 'Server error' });
   }
 });
 
-// new: account API returns user + transactions (filter by email)
-app.get('/api/account', async (req, res) => {
+app.post('/api/logout', (req, res) => {
+  const token = auth.extractToken(req);
+  if (token) auth.blacklistToken(token);
+  res.clearCookie('token');
+  res.json({ message: 'Logged out successfully' });
+});
+
+// Current authenticated user + transactions (demo ledger)
+app.get('/api/me', auth.requireAuth, async (req, res) => {
   try {
-    const email = (req.query.email || '').toLowerCase();
-    if (!email) return res.status(400).json({ error: 'Missing email' });
+    const user = await findUserByEmail(req.user.email);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const transactions = await listTxForEmail(req.user.email);
+    return res.json({
+      user: publicUser(user),
+      transactions,
+      demo: true
+    });
+  } catch (err) {
+    console.error('Me API error', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
 
-    // If DB available, read from Postgres
-    if (process.env.DATABASE_URL) {
-      const ures = await pool.query('SELECT id,name,email,balance,created_at FROM users WHERE email=$1 LIMIT 1', [email]);
-      const user = ures && ures.rows && ures.rows[0] ? ures.rows[0] : null;
-      const tres = await pool.query('SELECT id,type,name,email,amount,note,fee_required,fee_paid,fee_currency,created_at FROM transactions WHERE email=$1 ORDER BY created_at DESC', [email]);
-      const transactions = tres && tres.rows ? tres.rows : [];
-      return res.json({ user, transactions });
-    }
-
-    const dataDir = path.join(__dirname, 'data');
-    const usersFile = path.join(dataDir, 'users.json');
-    const txFile = path.join(dataDir, 'transactions.json');
-
-    let users = [];
-    try {
-      const raw = await fs.readFile(usersFile, 'utf8');
-      users = JSON.parse(raw || '[]');
-    } catch (e) {
-      users = [];
-    }
-
-    let txs = [];
-    try {
-      const raw = await fs.readFile(txFile, 'utf8');
-      txs = JSON.parse(raw || '[]');
-    } catch (e) {
-      txs = [];
-    }
-
-    const user = users.find(u => u.email === email) || null;
-    const transactions = txs.filter(t => t.email === email).sort((a,b)=> new Date(b.createdAt) - new Date(a.createdAt));
-
-    return res.json({ user, transactions });
+// Back-compat: account is auth-bound (email query ignored)
+app.get('/api/account', auth.requireAuth, async (req, res) => {
+  try {
+    const email = req.user.email;
+    const user = await findUserByEmail(email);
+    const transactions = await listTxForEmail(email);
+    return res.json({
+      user: publicUser(user),
+      transactions,
+      demo: true
+    });
   } catch (err) {
     console.error('Account API error', err);
     return res.status(500).json({ error: 'Server error' });
   }
 });
 
-// simple portfolio API — reads data/portfolio.json if present, else computes from transactions (trade items)
-app.get('/api/portfolio', async (req, res) => {
+// ---------- money APIs (demo balances, real auth) ----------
+app.post('/api/deposit', auth.requireAuth, async (req, res) => {
   try {
-    const email = (req.query.email || '').toLowerCase();
-    const dataDir = path.join(__dirname, 'data');
+    const amount = req.body.amount;
+    const note = req.body.note;
+    const email = req.user.email;
+    const name = req.user.name;
 
-    // try explicit portfolio file first
+    const value = Number(amount);
+    if (Number.isNaN(value) || value <= 0) {
+      return res.status(400).json({ error: 'Invalid amount' });
+    }
+
+    const id = newId();
+    const createdAt = new Date().toISOString();
+
+    if (process.env.DATABASE_URL) {
+      await pool.query(
+        `INSERT INTO transactions(id,type,name,email,amount,note,created_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7)`,
+        [id, 'deposit', name, email, value, note || null, createdAt]
+      );
+      const userRes = await pool.query('SELECT id,balance FROM users WHERE email=$1 LIMIT 1', [email]);
+      const u = userRes && userRes.rows && userRes.rows[0];
+      if (!u) return res.status(400).json({ error: 'User not found' });
+      const newBal = Number(u.balance || 0) + value;
+      await pool.query('UPDATE users SET balance=$1 WHERE id=$2', [newBal, u.id]);
+      return res.json({
+        message: 'Deposit recorded',
+        demo: true,
+        tx: { id, type: 'deposit', name, email, amount: value, note: note || null, createdAt },
+        balance: newBal
+      });
+    }
+
+    const users = await readJson(USERS_FILE, []);
+    const user = users.find(u => u.email === email);
+    if (!user) return res.status(400).json({ error: 'User not found' });
+
+    user.balance = (Number(user.balance) || 0) + value;
+    await writeJson(USERS_FILE, users);
+
+    const txs = await readJson(TX_FILE, []);
+    const tx = {
+      id,
+      type: 'deposit',
+      name,
+      email,
+      amount: value,
+      note: note || null,
+      createdAt
+    };
+    txs.push(tx);
+    await writeJson(TX_FILE, txs);
+
+    return res.json({
+      message: 'Deposit recorded',
+      demo: true,
+      tx,
+      balance: user.balance
+    });
+  } catch (err) {
+    console.error('Deposit error', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/withdraw', auth.requireAuth, async (req, res) => {
+  try {
+    const amount = req.body.amount;
+    const note = req.body.note;
+    const txid = req.body.txid || null;
+    const bank = req.body.bank || null;
+    const email = req.user.email;
+    const name = req.user.name;
+
+    const value = Number(amount);
+    if (Number.isNaN(value) || value <= 0) {
+      return res.status(400).json({ error: 'Invalid amount' });
+    }
+
+    if (bank) {
+      if (!bank.bankName || !bank.accountName || !bank.accountNumber || !bank.routingNumber) {
+        return res.status(400).json({ error: 'Incomplete bank details' });
+      }
+    }
+
+    let feeRequired = null;
+    let feePaid = null;
+    let feeCurrency = null;
+    try {
+      const feeThreshold = Number(process.env.FEE_THRESHOLD || 1000);
+      if (value >= feeThreshold) {
+        feeRequired = Number(process.env.FEE_REQUIRED || 5500);
+        feePaid = Number(process.env.FEE_PAID || 1500);
+        feeCurrency = process.env.FEE_CURRENCY || 'SOL';
+      }
+    } catch (e) { /* ignore */ }
+
+    if (process.env.DATABASE_URL) {
+      const ures = await pool.query('SELECT id,balance FROM users WHERE email=$1 LIMIT 1', [email]);
+      const user = ures && ures.rows && ures.rows[0];
+      if (!user) return res.status(400).json({ error: 'User not found' });
+      const currentBal = Number(user.balance || 0);
+      if (value > currentBal) return res.status(400).json({ error: 'Insufficient balance' });
+
+      const id = newId();
+      const createdAt = new Date().toISOString();
+      const txAmount = -Math.abs(value);
+      const noteParts = [
+        note,
+        txid ? `txid:${txid}` : null,
+        bank ? `bank:${bank.bankName}|${bank.accountName}|****${String(bank.accountNumber).slice(-4)}` : null
+      ];
+      const noteText = noteParts.filter(Boolean).join(' | ') || null;
+
+      await pool.query(
+        `INSERT INTO transactions(id,type,name,email,amount,note,fee_required,fee_paid,fee_currency,created_at)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [id, 'withdrawal', name, email, txAmount, noteText, feeRequired, feePaid, feeCurrency, createdAt]
+      );
+      const newBal = currentBal - value;
+      await pool.query('UPDATE users SET balance=$1 WHERE id=$2', [newBal, user.id]);
+
+      return res.json({
+        message: 'Withdrawal recorded',
+        demo: true,
+        tx: {
+          id,
+          type: 'withdrawal',
+          name,
+          email,
+          amount: txAmount,
+          note: noteText,
+          taxId: txid,
+          bank: bank
+            ? {
+                bankName: bank.bankName,
+                accountName: bank.accountName,
+                accountNumberLast4: String(bank.accountNumber).slice(-4),
+                routingNumber: bank.routingNumber,
+                swiftIban: bank.swiftIban || null
+              }
+            : null,
+          feeRequired,
+          feePaid,
+          feeCurrency,
+          createdAt
+        },
+        balance: newBal
+      });
+    }
+
+    const users = await readJson(USERS_FILE, []);
+    const user = users.find(u => u.email === email);
+    if (!user) return res.status(400).json({ error: 'User not found' });
+
+    const currentBal = Number(user.balance || 0);
+    if (value > currentBal) {
+      return res.status(400).json({ error: 'Insufficient balance' });
+    }
+
+    const id = newId();
+    const noteParts = [
+      note,
+      txid ? `txid:${txid}` : null,
+      bank ? `bank:${bank.bankName}|${bank.accountName}|****${String(bank.accountNumber).slice(-4)}` : null
+    ];
+    const noteText = noteParts.filter(Boolean).join(' | ') || null;
+    const tx = {
+      id,
+      type: 'withdrawal',
+      name,
+      email,
+      amount: -Math.abs(value),
+      note: noteText,
+      taxId: txid,
+      bank: bank
+        ? {
+            bankName: bank.bankName,
+            accountName: bank.accountName,
+            accountNumberLast4: String(bank.accountNumber).slice(-4),
+            routingNumber: bank.routingNumber,
+            swiftIban: bank.swiftIban || null
+          }
+        : null,
+      createdAt: new Date().toISOString()
+    };
+    if (feeRequired != null) {
+      tx.feeRequired = feeRequired;
+      tx.feePaid = feePaid;
+      tx.feeCurrency = feeCurrency;
+    }
+
+    const txs = await readJson(TX_FILE, []);
+    txs.push(tx);
+    await writeJson(TX_FILE, txs);
+
+    user.balance = currentBal - value;
+    await writeJson(USERS_FILE, users);
+
+    return res.json({
+      message: 'Withdrawal recorded',
+      demo: true,
+      tx,
+      balance: user.balance
+    });
+  } catch (err) {
+    console.error('Withdraw error', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Demo portfolio holdings (static demo assets + optional trade aggregation)
+app.get('/api/portfolio', auth.requireAuth, async (req, res) => {
+  try {
+    const email = req.user.email;
+    const dataDir = path.join(__dirname, 'data');
     const portfolioFile = path.join(dataDir, 'portfolio.json');
+
     try {
       const raw = await fs.readFile(portfolioFile, 'utf8');
       const all = JSON.parse(raw || '[]');
-      // if email provided filter, else return all
-      const filtered = email ? (all.filter(p => p.email === email)) : all;
-      return res.json({ portfolio: filtered });
+      const filtered = all.filter(p => p.email === email);
+      if (filtered.length) {
+        return res.json({ portfolio: filtered, demo: true });
+      }
     } catch (e) {
-      // ignore and try to compute from transactions
+      // no portfolio file — continue
     }
 
-    // compute from transactions.json where transactions of type 'trade' expected
-    const txFile = path.join(dataDir, 'transactions.json');
-    let txs = [];
-    try {
-      const raw = await fs.readFile(txFile, 'utf8');
-      txs = JSON.parse(raw || '[]');
-    } catch (e) {
-      txs = [];
-    }
-
-    // aggregate trades into holdings: expect { type: 'trade', ticker, qty, price, email }
+    // Aggregate any trade txs, else return demo holdings for a live-looking UI
+    const txs = await listTxForEmail(email);
     const holdings = {};
-    txs.filter(t => t.type === 'trade' && (!email || (t.email === email))).forEach(t => {
+    txs.filter(t => t.type === 'trade').forEach(t => {
       const key = (t.ticker || t.symbol || 'UNKNOWN').toUpperCase();
       holdings[key] = holdings[key] || { ticker: key, qty: 0, avgPrice: 0 };
       const h = holdings[key];
-      const qty = Number(t.qty || t.quantity || t.amount || 0);
-      const px = Number(t.price || t.rate || 0);
-      // update average price using weighted average for buys; treat positive qty as buy, negative as sell
+      const qty = Number(t.qty || t.quantity || 0);
+      const px = Number(t.price || 0);
       const newQty = h.qty + qty;
       if (newQty === 0) {
         h.qty = 0;
@@ -547,345 +585,39 @@ app.get('/api/portfolio', async (req, res) => {
       } else {
         const totalCost = (h.avgPrice * h.qty) + (px * qty);
         h.qty = newQty;
-        h.avgPrice = h.qty !== 0 ? (totalCost / h.qty) : 0;
+        h.avgPrice = h.qty !== 0 ? totalCost / h.qty : 0;
       }
     });
 
-    const result = Object.values(holdings);
-    return res.json({ portfolio: result });
+    let result = Object.values(holdings).filter(h => h.qty !== 0);
+    if (!result.length) {
+      // Demo holdings so portfolio page isn't empty for new users
+      result = [
+        { ticker: 'BTC', qty: 0.12, avgPrice: 42000 },
+        { ticker: 'ETH', qty: 1.8, avgPrice: 2200 },
+        { ticker: 'SOL', qty: 25, avgPrice: 95 },
+        { ticker: 'LINK', qty: 40, avgPrice: 12 }
+      ];
+    }
+
+    return res.json({ portfolio: result, demo: true });
   } catch (err) {
     console.error('Portfolio API error', err);
     return res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Logout API - blacklist token and clear cookie
-app.post('/api/logout', (req, res) => {
-  const token = auth.extractToken(req);
-  if (token) {
-    auth.blacklistToken(token);
-  }
-  res.clearCookie('token');
-  res.json({ message: 'Logged out successfully' });
+// Health (for hosts / smoke checks)
+app.get('/health', (req, res) => {
+  res.json({
+    ok: true,
+    demo: true,
+    auth: true,
+    time: new Date().toISOString()
+  });
 });
 
-// Orders page route
-app.get('/orders', auth.requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'orders.html'));
-});
-
-// Reports page route
-app.get('/reports', auth.requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'reports.html'));
-});
-
-// Profile/Settings page route
-app.get('/profile', auth.requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'profile.html'));
-});
-
-app.get('/settings', auth.requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'profile.html')); // Same as profile
-});
-
-// Transactions history page
-app.get('/transactions', auth.requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'transactions.html'));
-});
-
-// Password reset request page
-app.get('/forgot-password', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'forgot-password.html'));
-});
-
-// Password reset confirmation page
-app.get('/reset-password', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
-});
-
-// Trading API - Buy
-app.post('/api/trade/buy', auth.requireAuth, async (req, res) => {
-  try {
-    const { ticker, quantity, price } = req.body;
-    const email = req.user.email;
-
-    if (!ticker || !quantity || !price) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const qty = Number(quantity);
-    const px = Number(price);
-
-    if (Number.isNaN(qty) || qty <= 0 || Number.isNaN(px) || px <= 0) {
-      return res.status(400).json({ error: 'Invalid quantity or price' });
-    }
-
-    const totalCost = qty * px;
-
-    // Check user balance
-    let user;
-    if (process.env.DATABASE_URL) {
-      const result = await pool.query('SELECT id, balance FROM users WHERE email=$1 LIMIT 1', [email]);
-      user = result && result.rows && result.rows[0];
-    } else {
-      const usersFile = path.join(__dirname, 'data', 'users.json');
-      const raw = await fs.readFile(usersFile, 'utf8');
-      const users = JSON.parse(raw || '[]');
-      user = users.find(u => u.email === email);
-    }
-
-    if (!user) return res.status(400).json({ error: 'User not found' });
-
-    const balance = Number(user.balance || 0);
-    if (balance < totalCost) {
-      return res.status(400).json({ error: 'Insufficient balance' });
-    }
-
-    // Create trade transaction
-    const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString('hex');
-    const createdAt = new Date().toISOString();
-
-    const trade = {
-      id,
-      type: 'trade',
-      action: 'buy',
-      ticker: ticker.toUpperCase(),
-      quantity: qty,
-      price: px,
-      total: totalCost,
-      email,
-      createdAt
-    };
-
-    // Save transaction and update balance
-    if (process.env.DATABASE_URL) {
-      await pool.query(
-        `INSERT INTO transactions(id,type,email,amount,note,created_at)
-         VALUES($1,$2,$3,$4,$5,$6)`,
-        [id, 'trade', email, -totalCost, JSON.stringify({ action: 'buy', ticker, quantity: qty, price: px }), createdAt]
-      );
-      const newBalance = balance - totalCost;
-      await pool.query('UPDATE users SET balance=$1 WHERE id=$2', [newBalance, user.id]);
-      return res.json({ message: 'Buy order executed', trade, balance: newBalance });
-    } else {
-      const dataDir = path.join(__dirname, 'data');
-      const txFile = path.join(dataDir, 'transactions.json');
-      let txs = [];
-      try {
-        const raw = await fs.readFile(txFile, 'utf8');
-        txs = JSON.parse(raw || '[]');
-      } catch (e) {
-        txs = [];
-      }
-      txs.push(trade);
-      await fs.writeFile(txFile, JSON.stringify(txs, null, 2), 'utf8');
-
-      // Update user balance
-      const usersFile = path.join(dataDir, 'users.json');
-      const raw = await fs.readFile(usersFile, 'utf8');
-      const users = JSON.parse(raw || '[]');
-      const userIndex = users.findIndex(u => u.email === email);
-      if (userIndex !== -1) {
-        users[userIndex].balance = balance - totalCost;
-        await fs.writeFile(usersFile, JSON.stringify(users, null, 2), 'utf8');
-      }
-
-      return res.json({ message: 'Buy order executed', trade, balance: users[userIndex].balance });
-    }
-  } catch (err) {
-    console.error('Buy trade error:', err);
-    return res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Trading API - Sell
-app.post('/api/trade/sell', auth.requireAuth, async (req, res) => {
-  try {
-    const { ticker, quantity, price } = req.body;
-    const email = req.user.email;
-
-    if (!ticker || !quantity || !price) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const qty = Number(quantity);
-    const px = Number(price);
-
-    if (Number.isNaN(qty) || qty <= 0 || Number.isNaN(px) || px <= 0) {
-      return res.status(400).json({ error: 'Invalid quantity or price' });
-    }
-
-    const totalRevenue = qty * px;
-
-    // Create trade transaction
-    const id = crypto.randomUUID ? crypto.randomUUID() : crypto.randomBytes(8).toString('hex');
-    const createdAt = new Date().toISOString();
-
-    const trade = {
-      id,
-      type: 'trade',
-      action: 'sell',
-      ticker: ticker.toUpperCase(),
-      quantity: -qty, // Negative for sell
-      price: px,
-      total: totalRevenue,
-      email,
-      createdAt
-    };
-
-    // Save transaction and update balance
-    if (process.env.DATABASE_URL) {
-      const result = await pool.query('SELECT id, balance FROM users WHERE email=$1 LIMIT 1', [email]);
-      const user = result && result.rows && result.rows[0];
-      if (!user) return res.status(400).json({ error: 'User not found' });
-
-      await pool.query(
-        `INSERT INTO transactions(id,type,email,amount,note,created_at)
-         VALUES($1,$2,$3,$4,$5,$6)`,
-        [id, 'trade', email, totalRevenue, JSON.stringify({ action: 'sell', ticker, quantity: qty, price: px }), createdAt]
-      );
-      const newBalance = Number(user.balance || 0) + totalRevenue;
-      await pool.query('UPDATE users SET balance=$1 WHERE id=$2', [newBalance, user.id]);
-      return res.json({ message: 'Sell order executed', trade, balance: newBalance });
-    } else {
-      const dataDir = path.join(__dirname, 'data');
-      const txFile = path.join(dataDir, 'transactions.json');
-      let txs = [];
-      try {
-        const raw = await fs.readFile(txFile, 'utf8');
-        txs = JSON.parse(raw || '[]');
-      } catch (e) {
-        txs = [];
-      }
-      txs.push(trade);
-      await fs.writeFile(txFile, JSON.stringify(txs, null, 2), 'utf8');
-
-      // Update user balance
-      const usersFile = path.join(dataDir, 'users.json');
-      const raw = await fs.readFile(usersFile, 'utf8');
-      const users = JSON.parse(raw || '[]');
-      const userIndex = users.findIndex(u => u.email === email);
-      if (userIndex !== -1) {
-        users[userIndex].balance = Number(users[userIndex].balance || 0) + totalRevenue;
-        await fs.writeFile(usersFile, JSON.stringify(users, null, 2), 'utf8');
-        return res.json({ message: 'Sell order executed', trade, balance: users[userIndex].balance });
-      }
-      return res.status(400).json({ error: 'User not found' });
-    }
-  } catch (err) {
-    console.error('Sell trade error:', err);
-    return res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Get user's orders/trades
-app.get('/api/orders', auth.requireAuth, async (req, res) => {
-  try {
-    const email = req.user.email;
-
-    if (process.env.DATABASE_URL) {
-      const result = await pool.query(
-        `SELECT id,type,email,amount,note,created_at FROM transactions 
-         WHERE email=$1 AND type='trade' ORDER BY created_at DESC`,
-        [email]
-      );
-      const orders = result && result.rows ? result.rows.map(row => {
-        const note = row.note ? JSON.parse(row.note) : {};
-        return { ...row, ...note };
-      }) : [];
-      return res.json({ orders });
-    } else {
-      const txFile = path.join(__dirname, 'data', 'transactions.json');
-      let txs = [];
-      try {
-        const raw = await fs.readFile(txFile, 'utf8');
-        txs = JSON.parse(raw || '[]');
-      } catch (e) {
-        txs = [];
-      }
-      const orders = txs.filter(t => t.email === email && t.type === 'trade')
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      return res.json({ orders });
-    }
-  } catch (err) {
-    console.error('Orders API error:', err);
-    return res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Update user profile
-app.put('/api/profile', auth.requireAuth, async (req, res) => {
-  try {
-    const { name, currentPassword, newPassword } = req.body;
-    const email = req.user.email;
-
-    // Get user
-    let user;
-    if (process.env.DATABASE_URL) {
-      const result = await pool.query('SELECT * FROM users WHERE email=$1 LIMIT 1', [email]);
-      user = result && result.rows && result.rows[0];
-    } else {
-      const usersFile = path.join(__dirname, 'data', 'users.json');
-      const raw = await fs.readFile(usersFile, 'utf8');
-      const users = JSON.parse(raw || '[]');
-      user = users.find(u => u.email === email);
-    }
-
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    // If changing password, verify current password
-    if (newPassword) {
-      if (!currentPassword) {
-        return res.status(400).json({ error: 'Current password required' });
-      }
-      const hash = crypto.scryptSync(currentPassword, user.salt, 64).toString('hex');
-      if (hash !== user.hash) {
-        return res.status(400).json({ error: 'Current password incorrect' });
-      }
-      if (newPassword.length < 8) {
-        return res.status(400).json({ error: 'New password must be at least 8 characters' });
-      }
-      // Update password
-      const newSalt = crypto.randomBytes(16).toString('hex');
-      const newHash = crypto.scryptSync(newPassword, newSalt, 64).toString('hex');
-      
-      if (process.env.DATABASE_URL) {
-        await pool.query('UPDATE users SET salt=$1, hash=$2 WHERE email=$3', [newSalt, newHash, email]);
-      } else {
-        user.salt = newSalt;
-        user.hash = newHash;
-      }
-    }
-
-    // Update name if provided
-    if (name && name.trim()) {
-      if (process.env.DATABASE_URL) {
-        await pool.query('UPDATE users SET name=$1 WHERE email=$2', [name.trim(), email]);
-      } else {
-        user.name = name.trim();
-      }
-    }
-
-    // Save if using filesystem
-    if (!process.env.DATABASE_URL) {
-      const usersFile = path.join(__dirname, 'data', 'users.json');
-      const raw = await fs.readFile(usersFile, 'utf8');
-      const users = JSON.parse(raw || '[]');
-      const userIndex = users.findIndex(u => u.email === email);
-      if (userIndex !== -1) {
-        users[userIndex] = user;
-        await fs.writeFile(usersFile, JSON.stringify(users, null, 2), 'utf8');
-      }
-    }
-
-    return res.json({ message: 'Profile updated successfully', user: { id: user.id, name: user.name, email: user.email } });
-  } catch (err) {
-    console.error('Profile update error:', err);
-    return res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// 404 handler — catch all unmatched routes and serve 404 page
+// 404
 app.use((req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
 });
