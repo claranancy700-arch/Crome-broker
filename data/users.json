@@ -114,5 +114,14 @@
     "hash": "1734219b9937645592fa9b4daedc072939d29172fb1ec11b2e88ca1c98c1dd7ceb5951871683a73cb542d224bd1cef589f174ba1ec887ce5d76187e8a2a41850",
     "balance": 390934,
     "createdAt": "2026-07-27T14:40:24.617Z"
+  },
+  {
+    "id": "12659d96-0bc4-494c-8ea2-4432ae4f8555",
+    "name": "Dep Test",
+    "email": "dep_test_1785245794714@test.local",
+    "salt": "73a6b098bbd58d3f9c7b8fa6035232bf",
+    "hash": "2988e3c83a9ffdb301fd84c8f01bbf4d7d3197649817c2aba77cedebdddd9190840645fe59b7d7c0c6efb771412056d5ebd9707118534e327f82c067cee32d55",
+    "balance": 25500,
+    "createdAt": "2026-07-28T13:36:34.860Z"
   }
 ]

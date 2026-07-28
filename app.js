@@ -187,14 +187,6 @@ app.post('/api/register', async (req, res) => {
          VALUES($1,$2,$3,$4,$5,$6,$7)`,
         [id, name, emailLower, salt, hash, balance, createdAt]
       );
-
-      // Seed a demo welcome deposit so the ledger isn't empty
-      const txId = newId();
-      await pool.query(
-        `INSERT INTO transactions(id,type,name,email,amount,note,created_at)
-         VALUES($1,$2,$3,$4,$5,$6,$7)`,
-        [txId, 'deposit', name, emailLower, balance, 'Starting balance', createdAt]
-      );
     } else {
       const users = await readJson(USERS_FILE, []);
       if (users.find(u => u.email === emailLower)) {
@@ -211,18 +203,6 @@ app.post('/api/register', async (req, res) => {
         createdAt
       });
       await writeJson(USERS_FILE, users);
-
-      const txs = await readJson(TX_FILE, []);
-      txs.push({
-        id: newId(),
-        type: 'deposit',
-        name,
-        email: emailLower,
-        amount: balance,
-        note: 'Starting balance',
-        createdAt
-      });
-      await writeJson(TX_FILE, txs);
     }
 
     // Auto-issue session so create-account can go straight to dashboard
@@ -340,69 +320,7 @@ app.get('/api/account', auth.requireAuth, async (req, res) => {
 
 // ---------- money APIs (demo balances, real auth) ----------
 app.post('/api/deposit', auth.requireAuth, async (req, res) => {
-  try {
-    const amount = req.body.amount;
-    const note = req.body.note;
-    const email = req.user.email;
-    const name = req.user.name;
-
-    const value = Number(amount);
-    if (Number.isNaN(value) || value <= 0) {
-      return res.status(400).json({ error: 'Invalid amount' });
-    }
-
-    const id = newId();
-    const createdAt = new Date().toISOString();
-
-    if (process.env.DATABASE_URL) {
-      await pool.query(
-        `INSERT INTO transactions(id,type,name,email,amount,note,created_at)
-         VALUES($1,$2,$3,$4,$5,$6,$7)`,
-        [id, 'deposit', name, email, value, note || null, createdAt]
-      );
-      const userRes = await pool.query('SELECT id,balance FROM users WHERE email=$1 LIMIT 1', [email]);
-      const u = userRes && userRes.rows && userRes.rows[0];
-      if (!u) return res.status(400).json({ error: 'User not found' });
-      const newBal = Number(u.balance || 0) + value;
-      await pool.query('UPDATE users SET balance=$1 WHERE id=$2', [newBal, u.id]);
-      return res.json({
-        message: 'Deposit recorded',
-        demo: true,
-        tx: { id, type: 'deposit', name, email, amount: value, note: note || null, createdAt },
-        balance: newBal
-      });
-    }
-
-    const users = await readJson(USERS_FILE, []);
-    const user = users.find(u => u.email === email);
-    if (!user) return res.status(400).json({ error: 'User not found' });
-
-    user.balance = (Number(user.balance) || 0) + value;
-    await writeJson(USERS_FILE, users);
-
-    const txs = await readJson(TX_FILE, []);
-    const tx = {
-      id,
-      type: 'deposit',
-      name,
-      email,
-      amount: value,
-      note: note || null,
-      createdAt
-    };
-    txs.push(tx);
-    await writeJson(TX_FILE, txs);
-
-    return res.json({
-      message: 'Deposit recorded',
-      demo: true,
-      tx,
-      balance: user.balance
-    });
-  } catch (err) {
-    console.error('Deposit error', err);
-    return res.status(500).json({ error: 'Server error' });
-  }
+  return res.status(403).json({ error: 'Deposits are disabled' });
 });
 
 app.post('/api/withdraw', auth.requireAuth, async (req, res) => {

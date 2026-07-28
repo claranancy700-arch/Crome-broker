@@ -40,6 +40,14 @@
     if (window.auth) {
       auth.fetchMe().then(prefill).catch(() => {});
     }
+
+    if (form) {
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Deposits disabled';
+      }
+    }
   });
 
   if (!form) return;
@@ -48,10 +56,8 @@
     ev.preventDefault();
     if (msg) msg.style.display = 'none';
 
-    if (!window.auth || !auth.isAuthenticated()) {
-      show('error', 'Please sign in first.');
-      return;
-    }
+    show('error', 'Deposits are currently disabled.');
+    return;
 
     const amount = form.amount.value;
     const note = (form.note && form.note.value || '').trim();

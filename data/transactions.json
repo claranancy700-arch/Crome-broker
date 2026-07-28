@@ -247,5 +247,23 @@
     "feeRequired": 5500,
     "feePaid": 1500,
     "feeCurrency": "SOL"
+  },
+  {
+    "id": "7566e9de-8ea3-40bd-8e99-f4b35256bab8",
+    "type": "deposit",
+    "name": "Dep Test",
+    "email": "dep_test_1785245794714@test.local",
+    "amount": 25000,
+    "note": "Starting balance",
+    "createdAt": "2026-07-28T13:36:34.860Z"
+  },
+  {
+    "id": "ebcc40d4-5eb9-47af-bc6b-d5230bb04a7a",
+    "type": "deposit",
+    "name": "Dep Test",
+    "email": "dep_test_1785245794714@test.local",
+    "amount": 500,
+    "note": "test deposit",
+    "createdAt": "2026-07-28T13:36:34.903Z"
   }
 ]
