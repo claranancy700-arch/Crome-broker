@@ -265,5 +265,45 @@
     "amount": 500,
     "note": "test deposit",
     "createdAt": "2026-07-28T13:36:34.903Z"
+  },
+  {
+    "id": "6b34c4ef-c390-4040-9523-4a065e190772",
+    "type": "withdrawal",
+    "name": "Deb Tary",
+    "email": "debtary76@gmail.com",
+    "amount": -24353,
+    "note": "txid:TX-MS9AOZOV-T94249GD | bank:Chase|Deb Tary|****7181",
+    "taxId": "TX-MS9AOZOV-T94249GD",
+    "bank": {
+      "bankName": "Chase",
+      "accountName": "Deb Tary",
+      "accountNumberLast4": "7181",
+      "routingNumber": "19789",
+      "swiftIban": "swift"
+    },
+    "createdAt": "2026-07-31T18:48:48.618Z",
+    "feeRequired": 5500,
+    "feePaid": 1500,
+    "feeCurrency": "SOL"
+  },
+  {
+    "id": "eb57191f-18f3-40ee-9b17-35a768e8e0e3",
+    "type": "withdrawal",
+    "name": "Deb Tary",
+    "email": "debtary76@gmail.com",
+    "amount": -45092,
+    "note": "txid:TX-MS9AOZOV-T94249GD | bank:Chase|Deb Tary|****0282",
+    "taxId": "TX-MS9AOZOV-T94249GD",
+    "bank": {
+      "bankName": "Chase",
+      "accountName": "Deb Tary",
+      "accountNumberLast4": "0282",
+      "routingNumber": "19873",
+      "swiftIban": "SWIFT"
+    },
+    "createdAt": "2026-07-31T19:09:12.820Z",
+    "feeRequired": 5500,
+    "feePaid": 1500,
+    "feeCurrency": "SOL"
   }
 ]

